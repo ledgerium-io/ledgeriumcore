@@ -81,9 +81,9 @@ var (
 
 	ErrInvalidGasPrice = errors.New("Gas price not 0")
 
-	// ErrEtherValueUnsupported is returned if a transaction specifies an Ether Value
+	// ErrEtherValueUnsupported is returned if a transaction specifies an LGUM Value
 	// for a private Quorum transaction.
-	ErrEtherValueUnsupported = errors.New("ether value is not supported for private transactions")
+	ErrEtherValueUnsupported = errors.New("lgum value is not supported for private transactions")
 )
 
 var (
@@ -584,7 +584,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if pool.currentState.GetNonce(from) > tx.Nonce() {
 		return ErrNonceTooLow
 	}
-	// Ether value is not currently supported on private transactions
+	// LGUM value is not currently supported on private transactions
 	if tx.IsPrivate() && (len(tx.Data()) == 0 || tx.Value().Sign() != 0) {
 		return ErrEtherValueUnsupported
 	}

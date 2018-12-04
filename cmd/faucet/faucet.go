@@ -84,7 +84,7 @@ var (
 )
 
 var (
-	ether = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	lgum = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 )
 
 func main() {
@@ -296,7 +296,7 @@ func (f *faucet) webHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(f.index)
 }
 
-// apiHandler handles requests for Ether grants and transaction statuses.
+// apiHandler handles requests for LGUM grants and transaction statuses.
 func (f *faucet) apiHandler(conn *websocket.Conn) {
 	// Start tracking the connection and drop at the end
 	f.lock.Lock()
@@ -318,7 +318,7 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 	nonce, _ := f.client.NonceAt(context.Background(), f.account.Address, nil)
 
 	websocket.JSON.Send(conn, map[string]interface{}{
-		"funds":    balance.Div(balance, ether),
+		"funds":    balance.Div(balance, lgum),
 		"funded":   nonce,
 		"peers":    f.stack.Server().PeerCount(),
 		"requests": f.reqs,
@@ -441,7 +441,7 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 		)
 		if timeout = f.timeouts[gist.Owner.Login]; time.Now().After(timeout) {
 			// User wasn't funded recently, create the funding transaction
-			amount := new(big.Int).Mul(big.NewInt(int64(*payoutFlag)), ether)
+			amount := new(big.Int).Mul(big.NewInt(int64(*payoutFlag)), lgum)
 			amount = new(big.Int).Mul(amount, new(big.Int).Exp(big.NewInt(5), big.NewInt(int64(msg.Tier)), nil))
 			amount = new(big.Int).Div(amount, new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(msg.Tier)), nil))
 
@@ -498,7 +498,7 @@ func (f *faucet) loop() {
 		case head := <-heads:
 			// New chain head arrived, query the current stats and stream to clients
 			balance, _ := f.client.BalanceAt(context.Background(), f.account.Address, nil)
-			balance = new(big.Int).Div(balance, ether)
+			balance = new(big.Int).Div(balance, lgum)
 
 			price, _ := f.client.SuggestGasPrice(context.Background())
 			nonce, _ := f.client.NonceAt(context.Background(), f.account.Address, nil)

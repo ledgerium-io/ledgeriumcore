@@ -104,6 +104,7 @@ func ApplyTransaction(config *params.ChainConfig, bc *BlockChain, author *common
 		privateState = statedb
 	}
 
+	//removed the line for gas price check
 	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
 	if err != nil {
 		return nil, nil, nil, err

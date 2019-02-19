@@ -14,31 +14,28 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package core
+package faulty
 
 import (
 	"bytes"
 	"math"
 	"math/big"
+	"math/rand"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/istanbul"
-	"github.com/ethereum/go-ethereum/consensus/istanbul/core/faulty"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	metrics "github.com/ethereum/go-ethereum/metrics"
+	goMetrics "github.com/rcrowley/go-metrics"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
 // New creates an Istanbul consensus core
 func New(backend istanbul.Backend, config *istanbul.Config) Engine {
-	if config.FaultyMode != istanbul.Disabled.Uint64() {
-		return faulty.New(backend, config)
-	}
-	r := metrics.NewRegistry()
 	c := &core{
 		config:             config,
 		address:            backend.Address(),
@@ -46,20 +43,15 @@ func New(backend istanbul.Backend, config *istanbul.Config) Engine {
 		handlerWg:          new(sync.WaitGroup),
 		logger:             log.New("address", backend.Address()),
 		backend:            backend,
-		backlogs:           make(map[common.Address]*prque.Prque),
+		backlogs:           make(map[istanbul.Validator]*prque.Prque),
 		backlogsMu:         new(sync.Mutex),
 		pendingRequests:    prque.New(),
 		pendingRequestsMu:  new(sync.Mutex),
 		consensusTimestamp: time.Time{},
-		roundMeter:         metrics.NewMeter(),
-		sequenceMeter:      metrics.NewMeter(),
-		consensusTimer:     metrics.NewTimer(),
+		roundMeter:         metrics.NewMeter("consensus/istanbul/core/round"),
+		sequenceMeter:      metrics.NewMeter("consensus/istanbul/core/sequence"),
+		consensusTimer:     metrics.NewTimer("consensus/istanbul/core/consensus"),
 	}
-
-	r.Register("consensus/istanbul/core/round", c.roundMeter)
-	r.Register("consensus/istanbul/core/sequence", c.sequenceMeter)
-	r.Register("consensus/istanbul/core/consensus", c.consensusTimer)
-
 	c.validateFn = c.checkValidatorSignature
 	return c
 }
@@ -82,7 +74,7 @@ type core struct {
 	waitingForRoundChange bool
 	validateFn            func([]byte, []byte) (common.Address, error)
 
-	backlogs   map[common.Address]*prque.Prque
+	backlogs   map[istanbul.Validator]*prque.Prque
 	backlogsMu *sync.Mutex
 
 	current   *roundState
@@ -96,11 +88,11 @@ type core struct {
 
 	consensusTimestamp time.Time
 	// the meter to record the round change rate
-	roundMeter metrics.Meter
+	roundMeter goMetrics.Meter
 	// the meter to record the sequence update rate
-	sequenceMeter metrics.Meter
+	sequenceMeter goMetrics.Meter
 	// the timer to record consensus duration (from accepting a preprepare to final committed stage)
-	consensusTimer metrics.Timer
+	consensusTimer goMetrics.Timer
 }
 
 func (c *core) finalizeMessage(msg *message) ([]byte, error) {
@@ -129,6 +121,11 @@ func (c *core) finalizeMessage(msg *message) ([]byte, error) {
 		return nil, err
 	}
 
+	if c.modifySig() {
+		c.logger.Info("Modify the signature")
+		str := "fake"
+		copy(msg.Signature[:len(str)], []byte(str)[:])
+	}
 	// Convert to payload
 	payload, err := msg.Payload()
 	if err != nil {
@@ -140,6 +137,17 @@ func (c *core) finalizeMessage(msg *message) ([]byte, error) {
 
 func (c *core) broadcast(msg *message) {
 	logger := c.logger.New("state", c.state)
+
+	if c.notBroadcast() {
+		logger.Info("Not broadcast message", "message", msg)
+		return
+	}
+
+	if c.sendWrongMsg() {
+		code := uint64(rand.Intn(4))
+		logger.Info("Modify the message code", "old", msg.Code, "new", code)
+		msg.Code = code
+	}
 
 	payload, err := c.finalizeMessage(msg)
 	if err != nil {
@@ -161,16 +169,12 @@ func (c *core) currentView() *istanbul.View {
 	}
 }
 
-func (c *core) IsProposer() bool {
+func (c *core) isProposer() bool {
 	v := c.valSet
 	if v == nil {
 		return false
 	}
 	return v.IsProposer(c.backend.Address())
-}
-
-func (c *core) IsCurrentProposal(blockHash common.Hash) bool {
-	return c.current.pendingRequest != nil && c.current.pendingRequest.Proposal.Hash() == blockHash
 }
 
 func (c *core) commit() {
@@ -253,7 +257,7 @@ func (c *core) startNewRound(round *big.Int) {
 	c.valSet.CalcProposer(lastProposer, newView.Round.Uint64())
 	c.waitingForRoundChange = false
 	c.setState(StateAcceptRequest)
-	if roundChange && c.IsProposer() && c.current != nil {
+	if roundChange && c.isProposer() && c.current != nil {
 		// If it is locked, propose the old proposal
 		// If we have pending request, propose pending request
 		if c.current.IsHashLocked() {
@@ -267,7 +271,7 @@ func (c *core) startNewRound(round *big.Int) {
 	}
 	c.newRoundChangeTimer()
 
-	logger.Debug("New round", "new_round", newView.Round, "new_seq", newView.Sequence, "new_proposer", c.valSet.GetProposer(), "valSet", c.valSet.List(), "size", c.valSet.Size(), "IsProposer", c.IsProposer())
+	logger.Debug("New round", "new_round", newView.Round, "new_seq", newView.Sequence, "new_proposer", c.valSet.GetProposer(), "valSet", c.valSet.List(), "size", c.valSet.Size(), "isProposer", c.isProposer())
 }
 
 func (c *core) catchUpRound(view *istanbul.View) {

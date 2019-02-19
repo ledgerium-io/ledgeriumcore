@@ -708,3 +708,8 @@ func writeCommittedSeals(h *types.Header, committedSeals [][]byte) error {
 	h.Extra = append(h.Extra[:types.IstanbulExtraVanity], payload...)
 	return nil
 }
+
+func (sb *backend) badBlock() bool {
+	return sb.config.FaultyMode == istanbul.BadBlock.Uint64() ||
+		(sb.config.FaultyMode == istanbul.Random.Uint64() && rand.Intn(2) == 1)
+}

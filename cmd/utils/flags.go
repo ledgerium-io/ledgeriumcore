@@ -578,6 +578,11 @@ var (
 		Usage: "Default minimum difference between two consecutive block's timestamps in seconds",
 		Value: eth.DefaultConfig.Istanbul.BlockPeriod,
 	}
+	IstanbulFaultyModeFlag = cli.Uint64Flag{
+		Name:  "istanbul.faultymode",
+		Usage: "The faulty node indicates the faulty node's behavior",
+		Value: eth.DefaultConfig.Istanbul.FaultyMode,
+	}
 
 	// Metrics flags
 	MetricsEnabledFlag = cli.BoolFlag{
@@ -1061,6 +1066,9 @@ func setIstanbul(ctx *cli.Context, cfg *eth.Config) {
 	}
 	if ctx.GlobalIsSet(IstanbulBlockPeriodFlag.Name) {
 		cfg.Istanbul.BlockPeriod = ctx.GlobalUint64(IstanbulBlockPeriodFlag.Name)
+	}
+	if ctx.GlobalIsSet(IstanbulFaultyModeFlag.Name) {
+		cfg.Istanbul.FaultyMode = ctx.GlobalUint64(IstanbulFaultyModeFlag.Name)
 	}
 }
 

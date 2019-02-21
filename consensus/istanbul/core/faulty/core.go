@@ -29,7 +29,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	metrics "github.com/ethereum/go-ethereum/metrics"
+
+	//metrics "github.com/ethereum/go-ethereum/metrics"
 	goMetrics "github.com/rcrowley/go-metrics"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
@@ -48,9 +49,9 @@ func New(backend istanbul.Backend, config *istanbul.Config) Engine {
 		pendingRequests:    prque.New(),
 		pendingRequestsMu:  new(sync.Mutex),
 		consensusTimestamp: time.Time{},
-		roundMeter:         metrics.NewMeter("consensus/istanbul/core/round"),
-		sequenceMeter:      metrics.NewMeter("consensus/istanbul/core/sequence"),
-		consensusTimer:     metrics.NewTimer("consensus/istanbul/core/consensus"),
+		roundMeter:         goMetrics.NewRegisteredMeter("consensus/istanbul/core/round", nil),
+		sequenceMeter:      goMetrics.NewRegisteredMeter("consensus/istanbul/core/sequence", nil),
+		consensusTimer:     goMetrics.NewRegisteredTimer("consensus/istanbul/core/consensus", nil),
 	}
 	c.validateFn = c.checkValidatorSignature
 	return c
@@ -169,12 +170,16 @@ func (c *core) currentView() *istanbul.View {
 	}
 }
 
-func (c *core) isProposer() bool {
+func (c *core) IsProposer() bool {
 	v := c.valSet
 	if v == nil {
 		return false
 	}
 	return v.IsProposer(c.backend.Address())
+}
+
+func (c *core) IsCurrentProposal(blockHash common.Hash) bool {
+	return c.current.pendingRequest != nil && c.current.pendingRequest.Proposal.Hash() == blockHash
 }
 
 func (c *core) commit() {
@@ -257,7 +262,7 @@ func (c *core) startNewRound(round *big.Int) {
 	c.valSet.CalcProposer(lastProposer, newView.Round.Uint64())
 	c.waitingForRoundChange = false
 	c.setState(StateAcceptRequest)
-	if roundChange && c.isProposer() && c.current != nil {
+	if roundChange && c.IsProposer() && c.current != nil {
 		// If it is locked, propose the old proposal
 		// If we have pending request, propose pending request
 		if c.current.IsHashLocked() {
@@ -271,7 +276,7 @@ func (c *core) startNewRound(round *big.Int) {
 	}
 	c.newRoundChangeTimer()
 
-	logger.Debug("New round", "new_round", newView.Round, "new_seq", newView.Sequence, "new_proposer", c.valSet.GetProposer(), "valSet", c.valSet.List(), "size", c.valSet.Size(), "isProposer", c.isProposer())
+	logger.Debug("New round", "new_round", newView.Round, "new_seq", newView.Sequence, "new_proposer", c.valSet.GetProposer(), "valSet", c.valSet.List(), "size", c.valSet.Size(), "isProposer", c.IsProposer())
 }
 
 func (c *core) catchUpRound(view *istanbul.View) {

@@ -27,9 +27,11 @@ import (
 	"github.com/ethereum/go-ethereum/internal/ethapi"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 var maxPrice = big.NewInt(500 * params.Shannon)
+var minPrice = big.NewInt(1 * params.Babbage)
 
 type Config struct {
 	Blocks     int
@@ -122,6 +124,7 @@ func (gpo *Oracle) SuggestPrice(ctx context.Context) (*big.Int, error) {
 		}
 		if maxEmpty > 0 {
 			maxEmpty--
+			log.Trace("SuggestPrice", "maxEmpty", maxEmpty)
 			continue
 		}
 		if blockNum > 0 && sent < gpo.maxBlocks {
@@ -134,10 +137,17 @@ func (gpo *Oracle) SuggestPrice(ctx context.Context) (*big.Int, error) {
 	price := lastPrice
 	if len(blockPrices) > 0 {
 		sort.Sort(bigIntArray(blockPrices))
+		log.Trace("SuggestPrice", "percentile", gpo.percentile)
 		price = blockPrices[(len(blockPrices)-1)*gpo.percentile/100]
+		log.Trace("SuggestPrice", "price", price)
 	}
 	if price.Cmp(maxPrice) > 0 {
 		price = new(big.Int).Set(maxPrice)
+		log.Trace("SuggestPrice", "max price set", price)
+	}
+	if price.Cmp(minPrice) < 0 {
+		price = new(big.Int).Set(minPrice)
+		log.Trace("SuggestPrice", "min price set", price)
 	}
 
 	gpo.cacheLock.Lock()

@@ -35,11 +35,13 @@ func RLPHash(v interface{}) (h common.Hash) {
 func GetSignatureAddress(data []byte, sig []byte) (common.Address, error) {
 	// 1. Keccak data
 	hashData := crypto.Keccak256([]byte(data))
+	log.Trace("GetSignatureAddress", "hashData", common.Bytes2Hex(hashData))
 	// 2. Recover public key
 	pubkey, err := crypto.SigToPub(hashData, sig)
 	if err != nil {
 		return common.Address{}, err
 	}
+	log.Trace("GetSignatureAddress", "pubkey", pubkey, "ethereum address", crypto.PubkeyToAddress(*pubkey))
 	return crypto.PubkeyToAddress(*pubkey), nil
 }
 
@@ -50,9 +52,11 @@ func CheckValidatorSignature(valSet ValidatorSet, data []byte, sig []byte) (comm
 		log.Error("Failed to get signer address", "err", err)
 		return common.Address{}, err
 	}
+	log.Trace("CheckValidatorSignature", "signer", signer)
 
 	// 2. Check validator
 	if _, val := valSet.GetByAddress(signer); val != nil {
+		log.Trace("CheckValidatorSignature", "valSet.GetByAddress", val.Address())
 		return val.Address(), nil
 	}
 

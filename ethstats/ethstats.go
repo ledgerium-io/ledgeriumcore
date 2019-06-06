@@ -485,7 +485,7 @@ type blockStats struct {
 	TxHash     common.Hash    `json:"transactionsRoot"`
 	Root       common.Hash    `json:"stateRoot"`
 	Uncles     uncleStats     `json:"uncles"`
-	Validator  common.Address `json:"validator"`
+	Validators  []common.Address `json:"validators"`
 }
 
 // txStats is the information to report about individual transactions.
@@ -526,12 +526,12 @@ func (s *Service) reportBlock(conn *websocket.Conn, block *types.Block) error {
 // and assembles the block stats. If block is nil, the current head is processed.
 func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 	// Gather the block infos from the local blockchain
-	log.Trace("assembleBlockStats I am here")
 	var (
-		header *types.Header
-		td     *big.Int
-		txs    []txStats
-		uncles []*types.Header
+		header 		*types.Header
+		td     		*big.Int
+		txs    		[]txStats
+		uncles 		[]*types.Header
+		validators  []common.Address
 	)
 	if s.eth != nil {
 		// Full nodes have all needed information available
@@ -540,7 +540,6 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		}
 		header = block.Header()
 		td = s.eth.BlockChain().GetTd(header.Hash(), header.Number.Uint64())
-		log.Trace("assembleBlockStats", "Header number", header.Number.Uint64())
 
 		txs = make([]txStats, len(block.Transactions()))
 		for i, tx := range block.Transactions() {
@@ -559,31 +558,26 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 	}
 	// Assemble and return the block stats
 	author, _ := s.engine.Author(header)
-	log.Trace("assembleBlockStats", "author returns", author.Hex())
 
 	extra, err := types.ExtractIstanbulExtra(header)
 	if err != nil {
-		log.Trace("assembleBlockStats", "ExtractIstanbulExtra returns error", err)
+		log.Error("AssembleBlockStats", "ExtractIstanbulExtra returns error", err)
 	}
 	// The length of Committed seals should be larger than 0
-	log.Trace("assembleBlockStats", "length of CommittedSeal is ", len(extra.CommittedSeal))
 	if len(extra.CommittedSeal) == 0 {
-		log.Trace("assembleBlockStats", "length of CommittedSeal is zero")
+		log.Error("AssembleBlockStats", "length of CommittedSeal is zero")
 	}
 
 	proposalSeal := istanbulCore.PrepareCommittedSeal(header.Hash())
-	log.Trace("assembleBlockStats", "proposalSeal", common.Bytes2Hex(proposalSeal[:]))
-	var validatorAddr common.Address
 	// 1. Get committed seals from current header
 	for _, seal := range extra.CommittedSeal {
 		// 2. Get the original address by seal and parent block hash
 		addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
 		if err != nil {
-			//logger.Error("not a valid address", "err", err)
-			log.Trace("not a valid address", "err", err)
+			log.Error("Not a valid address", "err", err)
 			//return err
 		}
-		log.Trace("validator address", "validator addr", addr)
+		validators = append(validators, addr)
 	}
 
 	return &blockStats{
@@ -600,7 +594,7 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		TxHash:     header.TxHash,
 		Root:       header.Root,
 		Uncles:     uncles,
-		Validator:  validatorAddr,
+		Validators:  validators,
 	}
 }
 

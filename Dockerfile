@@ -4,14 +4,15 @@ FROM golang:1.11-alpine as builder
 RUN apk add --no-cache make gcc musl-dev linux-headers git
 
 ADD . /go-ethereum
-RUN cd /go-ethereum && make geth bootnode
+#RUN cd /go-ethereum && make geth bootnode
+RUN cd /go-ethereum && make clean && make geth
 
 # Pull Geth into a second stage deploy alpine container
 FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates build-base git bash curl python npm make gcc 
 COPY --from=builder /go-ethereum/build/bin/geth /usr/local/bin/
-COPY --from=builder /go-ethereum/build/bin/bootnode /usr/local/bin/
+#COPY --from=builder /go-ethereum/build/bin/bootnode /usr/local/bin/
 
 #RUN mkdir -p /ledgerium/governanceapp/governanceapp \
 #    && cd /ledgerium/governanceapp \

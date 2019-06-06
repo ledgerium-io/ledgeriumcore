@@ -21,6 +21,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	istanbulCore "github.com/ethereum/go-ethereum/consensus/istanbul/core"
+	"github.com/ethereum/go-ethereum/consensus/istanbul"
+	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"math/big"
 	"strings"
 	"time"
@@ -837,29 +840,48 @@ func FormatLogs(logs []vm.StructLog) []StructLogRes {
 	return formatted
 }
 
+func sigHash(header *types.Header) (hash common.Hash) {
+	hasher := sha3.NewKeccak256()
+
+	// Clean seal is required for calculating proposer seal.
+	rlp.Encode(hasher, types.IstanbulFilteredHeader(header, false))
+	hasher.Sum(hash[:0])
+	return hash
+}
+
 // RPCMarshalBlock converts the given block to the RPC output which depends on fullTx. If inclTx is true transactions are
 // returned. When fullTx is true the returned block contains full transaction details, otherwise it will only contain
 // transaction hashes.
 func RPCMarshalBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]interface{}, error) {
-	head := b.Header() // copies the header once
+	header := b.Header() // copies the header once
+	// Retrieve the signature from the header extra-data
+	istanbulExtra, err := types.ExtractIstanbulExtra(header)
+	if err != nil {
+		return nil, err
+	}
+	addr, err := istanbul.GetSignatureAddress(sigHash(header).Bytes(), istanbulExtra.Seal)
+	if err != nil {
+		return nil, err
+	}
+	log.Trace("RPCMarshalBlock", "miner addr", addr)
 	fields := map[string]interface{}{
-		"number":           (*hexutil.Big)(head.Number),
+		"number":           (*hexutil.Big)(header.Number),
 		"hash":             b.Hash(),
-		"parentHash":       head.ParentHash,
-		"nonce":            head.Nonce,
-		"mixHash":          head.MixDigest,
-		"sha3Uncles":       head.UncleHash,
-		"logsBloom":        head.Bloom,
-		"stateRoot":        head.Root,
-		"miner":            head.Coinbase,
-		"difficulty":       (*hexutil.Big)(head.Difficulty),
-		"extraData":        hexutil.Bytes(head.Extra),
+		"parentHash":       header.ParentHash,
+		"nonce":            header.Nonce,
+		"mixHash":          header.MixDigest,
+		"sha3Uncles":       header.UncleHash,
+		"logsBloom":        header.Bloom,
+		"stateRoot":        header.Root,
+		"miner":            addr,
+		"difficulty":       (*hexutil.Big)(header.Difficulty),
+		"extraData":        hexutil.Bytes(header.Extra),
 		"size":             hexutil.Uint64(b.Size()),
-		"gasLimit":         hexutil.Uint64(head.GasLimit),
-		"gasUsed":          hexutil.Uint64(head.GasUsed),
-		"timestamp":        (*hexutil.Big)(head.Time),
-		"transactionsRoot": head.TxHash,
-		"receiptsRoot":     head.ReceiptHash,
+		"gasLimit":         hexutil.Uint64(header.GasLimit),
+		"gasUsed":          hexutil.Uint64(header.GasUsed),
+		"timestamp":        (*hexutil.Big)(header.Time),
+		"transactionsRoot": header.TxHash,
+		"receiptsRoot":     header.ReceiptHash,
 	}
 
 	if inclTx {
@@ -889,6 +911,32 @@ func RPCMarshalBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]inter
 	}
 	fields["uncles"] = uncleHashes
 
+	extra, err := types.ExtractIstanbulExtra(header)
+	if err != nil {
+		log.Trace("RPCMarshalBlock", "ExtractIstanbulExtra returns error", err)
+		return fields, nil
+	}
+	// The length of Committed seals should be larger than 0
+	log.Trace("RPCMarshalBlock", "length of CommittedSeal is ", len(extra.CommittedSeal))
+	if len(extra.CommittedSeal) == 0 {
+		log.Error("RPCMarshalBlock", "length of CommittedSeal is zero")
+	}
+
+	proposalSeal := istanbulCore.PrepareCommittedSeal(header.Hash())
+
+	var validators  []common.Address
+	// 1. Get committed seals from current header
+	for _, seal := range extra.CommittedSeal {
+		// 2. Get the original address by seal and parent block hash
+		addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
+		if err != nil {
+			log.Error("RPCMarshalBlock", "not a valid address", "err", err)
+			return fields, nil
+		}
+		log.Trace("RPCMarshalBlock", "validator address", addr)
+		validators = append(validators, addr)
+	}
+	fields["validators"] = validators
 	return fields, nil
 }
 

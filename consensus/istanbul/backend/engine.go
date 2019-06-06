@@ -18,6 +18,7 @@ package backend
 
 import (
 	"bytes"
+	//"encoding/binary"
 	"errors"
 	"github.com/ethereum/go-ethereum/params"
 	"math/big"

@@ -538,22 +538,6 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 func (sb *backend) updateBlock(parent *types.Header, block *types.Block) (*types.Block, error) {
 	header := block.Header()
 
-	//log.Trace("updateBlock", "header:ParentHash", header.ParentHash.Hex())
-	//log.Trace("updateBlock", "header:UncleHash", header.UncleHash.Hex())
-	//log.Trace("updateBlock", "header:Coinbase", header.Coinbase.Hex())
-	//log.Trace("updateBlock", "header:Root", header.Root.Hex())
-	//log.Trace("updateBlock", "header:TxHash", header.TxHash.Hex())
-	//log.Trace("updateBlock", "header:ReceiptHash", header.ReceiptHash.Hex())
-	//log.Trace("updateBlock", "header:Bloom", common.Bytes2Hex(header.Bloom.Bytes()))
-	//log.Trace("updateBlock", "header:Difficulty", header.Difficulty)
-	//log.Trace("updateBlock", "header:Number", header.Number)
-	//log.Trace("updateBlock", "header:GasLimit", header.GasLimit)
-	//log.Trace("updateBlock", "header:GasUsed", header.GasUsed)
-	//log.Trace("updateBlock", "header:Time", header.Time)
-	//log.Trace("updateBlock", "header:Extra", common.Bytes2Hex(header.Extra))
-	//log.Trace("updateBlock", "header:MixDigest", header.MixDigest.Hex() )
-	//log.Trace("updateBlock", "header:Nonce", binary.BigEndian.Uint64(header.Nonce[:]))
-	//log.Trace("updateBlock", "header hash", sigHash(header).Hex())
 	// sign the hash
 	seal, err := sb.Sign(sigHash(header).Bytes())
 	if err != nil {
@@ -806,7 +790,6 @@ func writeCommittedSeals(h *types.Header, committedSeals [][]byte) error {
 	if err != nil {
 		return err
 	}
-	log.Trace("writeCommittedSeals", "payload", payload)
 	h.Extra = append(h.Extra[:types.IstanbulExtraVanity], payload...)
 	return nil
 }

@@ -42,6 +42,8 @@ import (
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rpc"
 	"golang.org/x/net/websocket"
+	istanbulCore "github.com/ethereum/go-ethereum/consensus/istanbul/core"
+	"github.com/ethereum/go-ethereum/consensus/istanbul"
 )
 
 const (
@@ -483,6 +485,7 @@ type blockStats struct {
 	TxHash     common.Hash    `json:"transactionsRoot"`
 	Root       common.Hash    `json:"stateRoot"`
 	Uncles     uncleStats     `json:"uncles"`
+	Validators  []common.Address `json:"validators"`
 }
 
 // txStats is the information to report about individual transactions.
@@ -507,7 +510,7 @@ func (s *Service) reportBlock(conn *websocket.Conn, block *types.Block) error {
 	details := s.assembleBlockStats(block)
 
 	// Assemble the block report and send it to the server
-	log.Trace("Sending new block to ethstats", "number", details.Number, "hash", details.Hash)
+	log.Trace("Sending new block to ethstats", "number", details.Number, "hash", details.Hash, "miner", details.Miner)
 
 	stats := map[string]interface{}{
 		"id":    s.node,
@@ -524,10 +527,11 @@ func (s *Service) reportBlock(conn *websocket.Conn, block *types.Block) error {
 func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 	// Gather the block infos from the local blockchain
 	var (
-		header *types.Header
-		td     *big.Int
-		txs    []txStats
-		uncles []*types.Header
+		header 		*types.Header
+		td     		*big.Int
+		txs    		[]txStats
+		uncles 		[]*types.Header
+		validators  []common.Address
 	)
 	if s.eth != nil {
 		// Full nodes have all needed information available
@@ -555,6 +559,27 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 	// Assemble and return the block stats
 	author, _ := s.engine.Author(header)
 
+	extra, err := types.ExtractIstanbulExtra(header)
+	if err != nil {
+		log.Error("AssembleBlockStats", "ExtractIstanbulExtra returns error", err)
+	}
+	// The length of Committed seals should be larger than 0
+	if len(extra.CommittedSeal) == 0 {
+		log.Error("AssembleBlockStats", "length of CommittedSeal is zero")
+	}
+
+	proposalSeal := istanbulCore.PrepareCommittedSeal(header.Hash())
+	// 1. Get committed seals from current header
+	for _, seal := range extra.CommittedSeal {
+		// 2. Get the original address by seal and parent block hash
+		addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
+		if err != nil {
+			log.Error("Not a valid address", "err", err)
+			//return err
+		}
+		validators = append(validators, addr)
+	}
+
 	return &blockStats{
 		Number:     header.Number,
 		Hash:       header.Hash(),
@@ -569,6 +594,7 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		TxHash:     header.TxHash,
 		Root:       header.Root,
 		Uncles:     uncles,
+		Validators:  validators,
 	}
 }
 

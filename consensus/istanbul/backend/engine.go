@@ -89,17 +89,17 @@ var (
 var (
 	LedgeriumMinerBlockReward  *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block
 	LedgeriumValidatorBlockReward *big.Int = big.NewInt(1e+18) // Block reward in wei for successfully mining a block upward from Byzantium
-	ledgeriumFirstTaperingBlockNumber * big.Int = big.NewInt(6307200)
-	LedgeriumFirstTaperMinerBlockReward  *big.Int = big.NewInt(LedgeriumMinerBlockReward.Int64()/3) // Block reward in wei for successfully mining a block
-	LedgeriumFirstTaperValidatorBlockReward *big.Int = big.NewInt(LedgeriumValidatorBlockReward.Int64()/3)
+	ledgeriumFirstTaperingBlockNumber * big.Int = big.NewInt(200)
+	LedgeriumFirstTaperMinerBlockReward  *big.Int = big.NewInt(2e+18) // Block reward in wei for successfully mining a block
+	LedgeriumFirstTaperValidatorBlockReward *big.Int = big.NewInt(67e+16)
 
-	ledgeriumSecondTaperingBlockNumber * big.Int = big.NewInt(12614400)
-	LedgeriumSecondTaperMinerBlockReward  *big.Int = big.NewInt(LedgeriumFirstTaperMinerBlockReward.Int64()/3) // Block reward in wei for successfully mining a block
-	LedgeriumSecondTaperValidatorBlockReward *big.Int = big.NewInt(LedgeriumFirstTaperValidatorBlockReward.Int64()/3)
+	ledgeriumSecondTaperingBlockNumber * big.Int = big.NewInt(1000)
+	LedgeriumSecondTaperMinerBlockReward  *big.Int = big.NewInt(133e+16) // Block reward in wei for successfully mining a block
+	LedgeriumSecondTaperValidatorBlockReward *big.Int = big.NewInt(45e+16)
 
-	ledgeriumThirdTaperingBlockNumber * big.Int = big.NewInt(18921600)
-	LedgeriumThirdTaperMinerBlockReward  *big.Int = big.NewInt(ledgeriumSecondTaperingBlockNumber.Int64()/3) // Block reward in wei for successfully mining a block
-	LedgeriumThirdTaperValidatorBlockReward *big.Int = big.NewInt(LedgeriumSecondTaperMinerBlockReward.Int64()/3)
+	ledgeriumThirdTaperingBlockNumber * big.Int = big.NewInt(2000)
+	LedgeriumThirdTaperMinerBlockReward  *big.Int = big.NewInt(88e+16) // Block reward in wei for successfully mining a block
+	LedgeriumThirdTaperValidatorBlockReward *big.Int = big.NewInt(30e+16)
 
 	defaultDifficulty = big.NewInt(1)
 	nilUncleHash      = types.CalcUncleHash(nil) // Always Keccak256(RLP([])) as uncles are meaningless outside of PoW.
@@ -472,6 +472,7 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 		log.Trace("AccumulateRewards", "address", author)
 
 		log.Trace("AccumulateRewards", "miner address", author, "before val", state.GetBalance(author))
+		log.Trace("AccumulateRewards", "minerblockReward ", minerblockReward)
 		state.AddBalance(author, minerblockReward)
 		log.Trace("AccumulateRewards", "miner address", author, "after val", state.GetBalance(author))
 
@@ -484,7 +485,8 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 				log.Error("Not a valid address", "err", err)
 			}
 			log.Trace("Finalize", "Validator", addr, "Balance before", state.GetBalance(addr))
-			state.AddBalance(author, validatorblockReward)
+			log.Trace("AccumulateRewards", "validatorblockReward ", validatorblockReward)
+			state.AddBalance(addr, validatorblockReward)
 			log.Trace("Finalize", "Validator", addr, "Balance after", state.GetBalance(addr))
 		}
 	}

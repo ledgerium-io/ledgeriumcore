@@ -64,7 +64,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb, privateState *stat
 
 		privateReceipts types.Receipts
 	)
-	// Mutate the the block and state according to any hard-fork specs
+	// Mutate the block and state according to any hard-fork specs
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
 		misc.ApplyDAOHardFork(statedb)
 	}
@@ -101,6 +101,10 @@ func ApplyTransaction(config *params.ChainConfig, bc *BlockChain, author *common
 	if !config.IsQuorum || !tx.IsPrivate() {
 		privateState = statedb
 	}
+	//Commenting this code as Ledgerium blockchain implements the gas price being non-zero
+	// if config.IsQuorum && tx.GasPrice() != nil && tx.GasPrice().Cmp(common.Big0) > 0 {
+	// 	return nil, nil, 0, ErrInvalidGasPrice
+	// }
 
 	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
 	if err != nil {

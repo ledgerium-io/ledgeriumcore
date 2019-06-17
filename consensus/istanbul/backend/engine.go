@@ -19,9 +19,6 @@ package backend
 import (
 	"bytes"
 	"errors"
-	//"github.com/ethereum/go-ethereum/params"
-
-	//	"github.com/ethereum/go-ethereum/params"
 	"math/big"
 	"math/rand"
 	"time"
@@ -87,18 +84,18 @@ var (
 	errMismatchTxhashes = errors.New("mismatch transcations hashes")
 )
 var (
-	LedgeriumMinerBlockReward  *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block
-	LedgeriumValidatorBlockReward *big.Int = big.NewInt(1e+18) // Block reward in wei for successfully mining a block upward from Byzantium
-	ledgeriumFirstTaperingBlockNumber * big.Int = big.NewInt(200)
-	LedgeriumFirstTaperMinerBlockReward  *big.Int = big.NewInt(2e+18) // Block reward in wei for successfully mining a block
+	LedgeriumMinerBlockReward               *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block
+	LedgeriumValidatorBlockReward           *big.Int = big.NewInt(1e+18) // Block reward in wei for successfully mining a block upward from Byzantium
+	ledgeriumFirstTaperingBlockNumber       *big.Int = big.NewInt(200)
+	LedgeriumFirstTaperMinerBlockReward     *big.Int = big.NewInt(2e+18) // Block reward in wei for successfully mining a block
 	LedgeriumFirstTaperValidatorBlockReward *big.Int = big.NewInt(67e+16)
 
-	ledgeriumSecondTaperingBlockNumber * big.Int = big.NewInt(1000)
-	LedgeriumSecondTaperMinerBlockReward  *big.Int = big.NewInt(133e+16) // Block reward in wei for successfully mining a block
+	ledgeriumSecondTaperingBlockNumber       *big.Int = big.NewInt(1000)
+	LedgeriumSecondTaperMinerBlockReward     *big.Int = big.NewInt(133e+16) // Block reward in wei for successfully mining a block
 	LedgeriumSecondTaperValidatorBlockReward *big.Int = big.NewInt(45e+16)
 
-	ledgeriumThirdTaperingBlockNumber * big.Int = big.NewInt(2000)
-	LedgeriumThirdTaperMinerBlockReward  *big.Int = big.NewInt(88e+16) // Block reward in wei for successfully mining a block
+	ledgeriumThirdTaperingBlockNumber       *big.Int = big.NewInt(2000)
+	LedgeriumThirdTaperMinerBlockReward     *big.Int = big.NewInt(88e+16) // Block reward in wei for successfully mining a block
 	LedgeriumThirdTaperValidatorBlockReward *big.Int = big.NewInt(30e+16)
 
 	defaultDifficulty = big.NewInt(1)
@@ -111,6 +108,10 @@ var (
 
 	inmemoryAddresses  = 20 // Number of recent addresses from ecrecover
 	recentAddresses, _ = lru.NewARC(inmemoryAddresses)
+
+	// Some weird constants to avoid constant memory allocs for them.
+	big8  = big.NewInt(8)
+	big32 = big.NewInt(32)
 )
 
 // Author retrieves the Ethereum address of the account that minted the given
@@ -393,12 +394,6 @@ func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	return nil
 }
 
-// Some weird constants to avoid constant memory allocs for them.
-var (
-	big8  = big.NewInt(8)
-	big32 = big.NewInt(32)
-)
-
 // Finalize runs any post-transaction state modifications (e.g. block rewards)
 // and assembles the final block.
 //
@@ -409,7 +404,7 @@ func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 	log.Trace("Finalize", "sb.address", sb.address)
 
 	//Accumulate any block and uncle rewards and commit the final state root
-	_, err :=  AccumulateRewards(chain, state, header, uncles)
+	_, err := AccumulateRewards(chain, state, header, uncles)
 	if err != nil {
 		log.Trace("Finalize", "AccumulateRewards err", err)
 		return nil, err
@@ -429,8 +424,8 @@ func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header *types.Header,
 	uncles []*types.Header) (*big.Int, error) {
 	// Select the correct block reward based on chain progression
-	var minerblockReward  * big.Int
-	var validatorblockReward * big.Int
+	var minerblockReward *big.Int
+	var validatorblockReward *big.Int
 
 	if header.Number.Cmp(ledgeriumThirdTaperingBlockNumber) == 1 {
 		log.Trace("AccumulateRewards block number is bigger than ledgeriumThirdTaperingBlockNumber")
@@ -495,7 +490,8 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 
 // Seal generates a new block for the given input block with the local miner's
 // seal place on top.
-func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-chan struct{}) (*types.Block, error) {
+func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+
 	// update the block header timestamp and signature and propose the block to core engine
 	header := block.Header()
 	number := header.Number.Uint64()
@@ -503,19 +499,19 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	// Bail out if we're unauthorized to sign a block
 	snap, err := sb.snapshot(chain, number-1, header.ParentHash, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if _, v := snap.ValSet.GetByAddress(sb.address); v == nil {
-		return nil, errUnauthorized
+		return errUnauthorized
 	}
 
 	parent := chain.GetHeader(header.ParentHash, number-1)
 	if parent == nil {
-		return nil, consensus.ErrUnknownAncestor
+		return consensus.ErrUnknownAncestor
 	}
 	block, err = sb.updateBlock(parent, block)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// wait for the timestamp of header, use this to adjust the block period
@@ -523,7 +519,8 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	select {
 	case <-time.After(delay):
 	case <-stop:
-		return nil, nil
+		results <- nil
+		return nil
 	}
 
 	// get the proposed block hash and clear it if the seal() is completed.
@@ -539,17 +536,18 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	go sb.EventMux().Post(istanbul.RequestEvent{
 		Proposal: block,
 	})
-
 	for {
 		select {
 		case result := <-sb.commitCh:
 			// if the block hash and the hash from channel are the same,
 			// return the result. Otherwise, keep waiting the next hash.
-			if block.Hash() == result.Hash() {
-				return result, nil
+			if result != nil && block.Hash() == result.Hash() {
+				results <- result
+				return nil
 			}
 		case <-stop:
-			return nil, nil
+			results <- nil
+			return nil
 		}
 	}
 }
@@ -717,6 +715,11 @@ func sigHash(header *types.Header) (hash common.Hash) {
 	return hash
 }
 
+// SealHash returns the hash of a block prior to it being sealed.
+func (sb *backend) SealHash(header *types.Header) common.Hash {
+	return sigHash(header)
+}
+
 // ecrecover extracts the Ethereum account address from a signed header.
 func ecrecover(header *types.Header) (common.Address, error) {
 	hash := header.Hash()
@@ -730,12 +733,12 @@ func ecrecover(header *types.Header) (common.Address, error) {
 	if err != nil {
 		return common.Address{}, err
 	}
-	//log.Trace("ecrecover", "istanbulExtra.Seal", istanbulExtra.Seal)
+
 	addr, err := istanbul.GetSignatureAddress(sigHash(header).Bytes(), istanbulExtra.Seal)
 	if err != nil {
 		return addr, err
 	}
-	//log.Trace("ecrecover", "GetSignatureAddress", addr)
+
 	recentAddresses.Add(hash, addr)
 	return addr, nil
 }

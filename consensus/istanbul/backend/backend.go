@@ -315,3 +315,7 @@ func (sb *backend) HasBadProposal(hash common.Hash) bool {
 	}
 	return sb.hasBadBlock(hash)
 }
+
+func (sb *backend) Close() error {
+	return nil
+}

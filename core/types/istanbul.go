@@ -18,8 +18,9 @@ package types
 
 import (
 	"errors"
-	"github.com/ethereum/go-ethereum/log"
 	"io"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -45,7 +46,6 @@ type IstanbulExtra struct {
 
 // EncodeRLP serializes ist into the Ethereum RLP format.
 func (ist *IstanbulExtra) EncodeRLP(w io.Writer) error {
-
 	return rlp.Encode(w, []interface{}{
 		ist.Validators,
 		ist.Seal,
@@ -71,7 +71,6 @@ func (ist *IstanbulExtra) DecodeRLP(s *rlp.Stream) error {
 // error if the length of the given extra-data is less than 32 bytes or the extra-data can not
 // be decoded.
 func ExtractIstanbulExtra(h *Header) (*IstanbulExtra, error) {
-	//log.Trace("ExtractIstanbulExtra", "header.Extra", common.Bytes2Hex(h.Extra))
 	if len(h.Extra) < IstanbulExtraVanity {
 		return nil, ErrInvalidIstanbulHeaderExtra
 	}

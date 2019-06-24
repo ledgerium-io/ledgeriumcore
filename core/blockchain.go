@@ -1064,6 +1064,7 @@ func mergeReceipts(pub, priv types.Receipts) types.Receipts {
 // only reason this method exists as a separate one is to make locking cleaner
 // with deferred statements.
 func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*types.Log, error) {
+	log.Info("insertChain", "Beginning")
 	// Sanity check that we have something meaningful to import
 	if len(chain) == 0 {
 		return 0, nil, nil, nil
@@ -1201,7 +1202,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		// alias state.New because we introduce a variable named state on the next line
 		stateNew := state.New
-
+		log.Info("insertChain", "header parent.Root",parent.Root, "block.Number()", block.Number())
 		state, err := state.New(parent.Root(), bc.stateCache)
 		if err != nil {
 			return i, events, coalescedLogs, err
@@ -1216,11 +1217,13 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		// /Quorum
 
 		// Process block using the parent state as reference point.
+		log.Info("InsertChain right before processor.Process")
 		receipts, privateReceipts, logs, usedGas, err := bc.processor.Process(block, state, privateState, bc.vmConfig)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
 		}
+		log.Info("InsertChain Added state.Commit", "block number", block.NumberU64(), "block root", block.Root())
 		// Validate the state using the default validator
 		err = bc.Validator().ValidateState(block, parent, state, receipts, usedGas)
 		if err != nil {
@@ -1242,6 +1245,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		proctime := time.Since(bstart)
 
+		log.Info("InsertChain right before WriteBlockWithState", "block number", block.NumberU64(), "block root", block.Root())
 		// Write the block to the chain and get the status.
 		status, err := bc.WriteBlockWithState(block, allReceipts, state, privateState)
 		if err != nil {
@@ -1280,6 +1284,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
 		events = append(events, ChainHeadEvent{lastCanon})
 	}
+	log.Info("Exiting InsertChain")
 	return 0, events, coalescedLogs, nil
 }
 

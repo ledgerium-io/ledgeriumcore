@@ -99,10 +99,14 @@ type Config struct {
 	TrieTimeout        time.Duration
 
 	// Mining-related options
-	Etherbase    common.Address `toml:",omitempty"`
-	MinerThreads int            `toml:",omitempty"`
-	ExtraData    []byte         `toml:",omitempty"`
-	GasPrice     *big.Int
+	Etherbase      common.Address `toml:",omitempty"`
+	MinerNotify    []string       `toml:",omitempty"`
+	MinerExtraData []byte         `toml:",omitempty"`
+	MinerGasFloor  uint64
+	MinerGasCeil   uint64
+	MinerGasPrice  *big.Int
+	MinerRecommit  time.Duration
+	MinerNoverify  bool
 
 	// Ethash options
 	Ethash ethash.Config
@@ -123,7 +127,11 @@ type Config struct {
 
 	// Miscellaneous options
 	DocRoot string `toml:"-"`
-	PowMode Mode
+
+	// Type of the EWASM interpreter ("" for default)
+	EWASMInterpreter string
+	// Type of the EVM interpreter ("" for default)
+	EVMInterpreter string
 }
 
 type Mode uint
@@ -137,5 +145,5 @@ const (
 )
 
 type configMarshaling struct {
-	ExtraData hexutil.Bytes
+	MinerExtraData hexutil.Bytes
 }

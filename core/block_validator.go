@@ -22,8 +22,8 @@ import (
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 // BlockValidator is responsible for validating block headers, uncles and
@@ -82,7 +82,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // For quorum it also verifies if the canonical hash in the blocks state points to a valid parent hash.
 func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas uint64) error {
 	header := block.Header()
-	log.Info("ValidateState", "header.Root",header.Root, "header.Number", header.Number)
+	log.Info("ValidateState", "header.Root", header.Root, "header.Number", header.Number)
 	if block.GasUsed() != usedGas {
 		return fmt.Errorf("invalid gas used (remote: %d local: %d)", block.GasUsed(), usedGas)
 	}
@@ -127,17 +127,27 @@ func CalcGasLimit(parent *types.Block, gasFloor, gasCeil uint64) uint64 {
 	if limit < params.MinGasLimit {
 		limit = params.MinGasLimit
 	}
-	// If we're outside our allowed gas range, we try to hone towards them
-	if limit < gasFloor {
+	// however, if we're now below the target (TargetGasLimit) we increase the
+	// limit as much as we can (parentGasLimit / 4096 -1)
+	if limit < params.TargetGasLimit {
 		limit = parent.GasLimit() + decay
-		if limit > gasFloor {
-			limit = gasFloor
-		}
-	} else if limit > gasCeil {
-		limit = parent.GasLimit() - decay
-		if limit < gasCeil {
-			limit = gasCeil
+		if limit > params.TargetGasLimit {
+			limit = params.TargetGasLimit
 		}
 	}
-	return limit
+	//Ledgerium - We dont want to use GasFloor and Gas Ceil parameters and leave the gas limit as configured from the geth console parameters
+	// // If we're outside our allowed gas range, we try to hone towards them
+	// if limit < gasFloor {
+	// 	limit = parent.GasLimit() + decay
+	// 	if limit > gasFloor {
+	// 		limit = gasFloor
+	// 	}
+	// } else if limit > gasCeil {
+	// 	limit = parent.GasLimit() - decay
+	// 	if limit < gasCeil {
+	// 		limit = gasCeil
+	// 	}
+	// }
+	//return limit
+	return parent.GasLimit()
 }

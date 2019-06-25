@@ -26,4 +26,5 @@ const (
 	GWei    = 1e9
 	Xlg     = 1e18
 	Shannon = 1e9
+	Babbage = 1e6
 )

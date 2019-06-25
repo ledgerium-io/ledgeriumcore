@@ -50,7 +50,9 @@ var DefaultConfig = Config{
 	TrieCache:     256,
 	TrieTimeout:   60 * time.Minute,
 	//GasPrice:      big.NewInt(18 * params.Shannon),
-	GasPrice: big.NewInt(1 * params.Shannon), //gasPrice = 1000000000 for Ledgerium
+	MinerGasFloor: params.MinGasLimit,
+	MinerGasCeil:  params.GenesisGasLimit,
+	MinerGasPrice: big.NewInt(params.GWei),
 
 	TxPool: core.DefaultTxPoolConfig,
 	GPO: gasprice.Config{
@@ -105,8 +107,9 @@ type Config struct {
 	MinerGasFloor  uint64
 	MinerGasCeil   uint64
 	MinerGasPrice  *big.Int
-	MinerRecommit  time.Duration
-	MinerNoverify  bool
+	//GasPrice       *big.Int
+	MinerRecommit time.Duration
+	MinerNoverify bool
 
 	// Ethash options
 	Ethash ethash.Config

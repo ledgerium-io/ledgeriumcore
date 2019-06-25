@@ -30,7 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-var maxPrice = big.NewInt(500 * params.Shannon)
+var maxPrice = big.NewInt(500 * params.GWei)
 var minPrice = big.NewInt(1 * params.Babbage)
 
 type Config struct {

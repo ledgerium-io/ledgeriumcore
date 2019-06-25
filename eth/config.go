@@ -52,6 +52,7 @@ var DefaultConfig = Config{
 	MinerGasFloor: params.MinGasLimit,
 	MinerGasCeil:  params.GenesisGasLimit,
 	MinerGasPrice: big.NewInt(params.GWei),
+	MinerRecommit: 3 * time.Second,
 
 	TxPool: core.DefaultTxPoolConfig,
 	GPO: gasprice.Config{
@@ -106,7 +107,6 @@ type Config struct {
 	MinerGasFloor  uint64
 	MinerGasCeil   uint64
 	MinerGasPrice  *big.Int
-	//GasPrice       *big.Int
 	MinerRecommit time.Duration
 	MinerNoverify bool
 

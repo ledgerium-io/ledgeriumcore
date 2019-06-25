@@ -582,9 +582,10 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		sizeLimit = DefaultTxPoolConfig.TransactionSizeLimit
 	}
 
-	if isQuorum && tx.GasPrice().Cmp(common.Big0) != 0 {
-		return ErrInvalidGasPrice
-	}
+	//Ledgerium needs gas price as non-zero
+	//if isQuorum && tx.GasPrice().Cmp(common.Big0) != 0 {
+	//	return ErrInvalidGasPrice
+	//}
 	// Reject transactions over 32KB (or manually set limit) to prevent DOS attacks
 	if float64(tx.Size()) > float64(sizeLimit*1024) {
 		return ErrOversizedData

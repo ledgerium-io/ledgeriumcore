@@ -433,17 +433,17 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 	var minerblockReward  * big.Int
 	var validatorblockReward * big.Int
 
-	if header.Number.Cmp(ledgeriumThirdTaperingBlockNumber) == 1 {
+	if header.Number.Cmp(ledgeriumThirdTaperingBlockNumber) >= 1 {
 		log.Trace("AccumulateRewards block number is bigger than ledgeriumThirdTaperingBlockNumber")
 		minerblockReward = LedgeriumThirdTaperMinerBlockReward
 		validatorblockReward = LedgeriumThirdTaperValidatorBlockReward
 	} else {
-		if header.Number.Cmp(ledgeriumSecondTaperingBlockNumber) == 1 {
+		if header.Number.Cmp(ledgeriumSecondTaperingBlockNumber) >= 1 {
 			log.Trace("AccumulateRewards block number is bigger than ledgeriumSecondTaperingBlockNumber")
 			minerblockReward = LedgeriumSecondTaperMinerBlockReward
 			validatorblockReward = LedgeriumSecondTaperValidatorBlockReward
 		} else {
-			if header.Number.Cmp(ledgeriumFirstTaperingBlockNumber) == 1 {
+			if header.Number.Cmp(ledgeriumFirstTaperingBlockNumber) >= 1 {
 				log.Trace("AccumulateRewards block number is bigger than ledgeriumFirstTaperingBlockNumber")
 				minerblockReward = LedgeriumFirstTaperMinerBlockReward
 				validatorblockReward = LedgeriumFirstTaperValidatorBlockReward
@@ -469,9 +469,6 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 
 	author, err := istanbul.GetSignatureAddress(sigHash(parentHeader).Bytes(), istanbulExtra.Seal)
 	if err == nil {
-		log.Error("AccumulateRewards GetSignatureAddress", "err", err)
-		log.Trace("AccumulateRewards", "address", author)
-
 		log.Trace("AccumulateRewards", "miner address", author, "before val", state.GetBalance(author))
 		state.AddBalance(author, minerblockReward)
 		log.Trace("AccumulateRewards", "miner address", author, "after val", state.GetBalance(author))
@@ -482,11 +479,11 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 			// 2. Get the original address by seal and parent block hash
 			addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
 			if err != nil {
-				log.Error("Not a valid address", "err", err)
+				log.Error("AccumulateRewards Not a valid address", "err", err)
 			}
-			log.Trace("Finalize", "Validator", addr, "Balance before", state.GetBalance(addr))
+			log.Trace("AccumulateRewards", "Validator", addr, "Balance before", state.GetBalance(addr))
 			state.AddBalance(author, validatorblockReward)
-			log.Trace("Finalize", "Validator", addr, "Balance after", state.GetBalance(addr))
+			log.Trace("AccumulateRewards", "Validator", addr, "Balance after", state.GetBalance(addr))
 		}
 	}
 	return state.GetBalance(author), nil

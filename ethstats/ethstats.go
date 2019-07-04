@@ -560,24 +560,25 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 	author, _ := s.engine.Author(header)
 
 	extra, err := types.ExtractIstanbulExtra(header)
-	if err != nil {
-		log.Error("AssembleBlockStats", "ExtractIstanbulExtra returns error", err)
-	}
-	// The length of Committed seals should be larger than 0
-	if len(extra.CommittedSeal) == 0 {
-		log.Error("AssembleBlockStats", "length of CommittedSeal is zero")
-	}
-
-	proposalSeal := istanbulCore.PrepareCommittedSeal(header.Hash())
-	// 1. Get committed seals from current header
-	for _, seal := range extra.CommittedSeal {
-		// 2. Get the original address by seal and parent block hash
-		addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
-		if err != nil {
-			log.Error("Not a valid address", "err", err)
-			//return err
+	if err == nil {
+		// The length of Committed seal should be more than 0
+		if len(extra.CommittedSeal) == 0 {
+			log.Trace("AssembleBlockStats : length of CommittedSeal is zero")
 		}
-		validators = append(validators, addr)
+
+		proposalSeal := istanbulCore.PrepareCommittedSeal(header.Hash())
+		// 1. Get committed seals from current header
+		for _, seal := range extra.CommittedSeal {
+			// 2. Get the original address by seal and parent block hash
+			addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
+			if err != nil {
+				log.Trace("Not a valid address", "err", err)
+				//return err
+			}
+			validators = append(validators, addr)
+		}
+	} else {
+		log.Trace("AssembleBlockStats", "ExtractIstanbulExtra returns error", err)
 	}
 
 	return &blockStats{
@@ -594,7 +595,7 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		TxHash:     header.TxHash,
 		Root:       header.Root,
 		Uncles:     uncles,
-		Validators:  validators,
+		Validators: validators,
 	}
 }
 

@@ -1064,7 +1064,7 @@ func mergeReceipts(pub, priv types.Receipts) types.Receipts {
 // only reason this method exists as a separate one is to make locking cleaner
 // with deferred statements.
 func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*types.Log, error) {
-	log.Info("insertChain", "Beginning")
+	log.Trace("insertChain Beginning")
 	// Sanity check that we have something meaningful to import
 	if len(chain) == 0 {
 		return 0, nil, nil, nil

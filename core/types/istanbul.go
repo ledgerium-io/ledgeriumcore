@@ -79,7 +79,7 @@ func ExtractIstanbulExtra(h *Header) (*IstanbulExtra, error) {
 	var istanbulExtra *IstanbulExtra
 	err := rlp.DecodeBytes(h.Extra[IstanbulExtraVanity:], &istanbulExtra)
 	if err != nil {
-		log.Trace("ExtractIstanbulExtra", "err != nil")
+		log.Trace("ExtractIstanbulExtra", "err != nil", err)
 		return nil, err
 	}
 	return istanbulExtra, nil

@@ -87,19 +87,25 @@ var (
 	errMismatchTxhashes = errors.New("mismatch transcations hashes")
 )
 var (
+
 	LedgeriumMinerBlockReward  *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block
-	LedgeriumValidatorBlockReward *big.Int = big.NewInt(1e+18) // Block reward in wei for successfully mining a block upward from Byzantium
-	ledgeriumFirstTaperingBlockNumber * big.Int = big.NewInt(200)
+	//LedgeriumValidatorBlockReward *big.Int = big.NewInt(1e+18) // Block reward in wei for successfully mining a block upward from Byzantium
+
+	ledgeriumFirstTaperingBlockNumber * big.Int = big.NewInt(6307200)
 	LedgeriumFirstTaperMinerBlockReward  *big.Int = big.NewInt(2e+18) // Block reward in wei for successfully mining a block
-	LedgeriumFirstTaperValidatorBlockReward *big.Int = big.NewInt(67e+16)
+	//LedgeriumFirstTaperValidatorBlockReward *big.Int = big.NewInt(67e+16)
 
-	ledgeriumSecondTaperingBlockNumber * big.Int = big.NewInt(1000)
+	ledgeriumSecondTaperingBlockNumber * big.Int = big.NewInt(12614400)
 	LedgeriumSecondTaperMinerBlockReward  *big.Int = big.NewInt(133e+16) // Block reward in wei for successfully mining a block
-	LedgeriumSecondTaperValidatorBlockReward *big.Int = big.NewInt(45e+16)
+	//LedgeriumSecondTaperValidatorBlockReward *big.Int = big.NewInt(45e+16)
 
-	ledgeriumThirdTaperingBlockNumber * big.Int = big.NewInt(2000)
+	ledgeriumThirdTaperingBlockNumber * big.Int = big.NewInt(18921600)
 	LedgeriumThirdTaperMinerBlockReward  *big.Int = big.NewInt(88e+16) // Block reward in wei for successfully mining a block
-	LedgeriumThirdTaperValidatorBlockReward *big.Int = big.NewInt(30e+16)
+	//LedgeriumThirdTaperValidatorBlockReward *big.Int = big.NewInt(30e+16)
+
+	ledgeriumFourthTaperingBlockNumber * big.Int = big.NewInt(25228800)
+	LedgeriumFourthTaperMinerBlockReward  *big.Int = big.NewInt(60e+16) // Block reward in wei for successfully mining a block
+	//LedgeriumFourthTaperValidatorBlockReward *big.Int = big.NewInt(20e+16)
 
 	defaultDifficulty = big.NewInt(1)
 	nilUncleHash      = types.CalcUncleHash(nil) // Always Keccak256(RLP([])) as uncles are meaningless outside of PoW.
@@ -431,30 +437,34 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 	uncles []*types.Header) (*big.Int, error) {
 	// Select the correct block reward based on chain progression
 	var minerblockReward  * big.Int
-	var validatorblockReward * big.Int
-
-	if header.Number.Cmp(ledgeriumThirdTaperingBlockNumber) == 1 {
-		log.Trace("AccumulateRewards block number is bigger than ledgeriumThirdTaperingBlockNumber")
-		minerblockReward = LedgeriumThirdTaperMinerBlockReward
-		validatorblockReward = LedgeriumThirdTaperValidatorBlockReward
+	//var validatorblockReward * big.Int
+	if header.Number.Cmp(ledgeriumFourthTaperingBlockNumber) >= 1 {
+		log.Trace("AccumulateRewards block number is bigger than ledgeriumFourthTaperingBlockNumber")
+		minerblockReward = LedgeriumFourthTaperMinerBlockReward
+		//validatorblockReward = LedgeriumFourthTaperValidatorBlockReward
 	} else {
-		if header.Number.Cmp(ledgeriumSecondTaperingBlockNumber) == 1 {
-			log.Trace("AccumulateRewards block number is bigger than ledgeriumSecondTaperingBlockNumber")
-			minerblockReward = LedgeriumSecondTaperMinerBlockReward
-			validatorblockReward = LedgeriumSecondTaperValidatorBlockReward
+		if header.Number.Cmp(ledgeriumThirdTaperingBlockNumber) >= 1 {
+			log.Trace("AccumulateRewards block number is bigger than ledgeriumThirdTaperingBlockNumber")
+			minerblockReward = LedgeriumThirdTaperMinerBlockReward
+			//validatorblockReward = LedgeriumThirdTaperValidatorBlockReward
 		} else {
-			if header.Number.Cmp(ledgeriumFirstTaperingBlockNumber) == 1 {
-				log.Trace("AccumulateRewards block number is bigger than ledgeriumFirstTaperingBlockNumber")
-				minerblockReward = LedgeriumFirstTaperMinerBlockReward
-				validatorblockReward = LedgeriumFirstTaperValidatorBlockReward
+			if header.Number.Cmp(ledgeriumSecondTaperingBlockNumber) >= 1 {
+				log.Trace("AccumulateRewards block number is bigger than ledgeriumSecondTaperingBlockNumber")
+				minerblockReward = LedgeriumSecondTaperMinerBlockReward
+				//validatorblockReward = LedgeriumSecondTaperValidatorBlockReward
 			} else {
-				log.Trace("AccumulateRewards block number is smaller than ledgeriumMainNetBlockNumber")
-				minerblockReward = LedgeriumMinerBlockReward
-				validatorblockReward = LedgeriumValidatorBlockReward
+				if header.Number.Cmp(ledgeriumFirstTaperingBlockNumber) >= 1 {
+					log.Trace("AccumulateRewards block number is bigger than ledgeriumFirstTaperingBlockNumber")
+					minerblockReward = LedgeriumFirstTaperMinerBlockReward
+					//validatorblockReward = LedgeriumFirstTaperValidatorBlockReward
+				} else {
+					log.Trace("AccumulateRewards block number is smaller than ledgeriumMainNetBlockNumber")
+					minerblockReward = LedgeriumMinerBlockReward
+					//validatorblockReward = LedgeriumValidatorBlockReward
+				}
 			}
 		}
 	}
-
 	number := header.Number.Uint64()
 	parentHeader := chain.GetHeader(header.ParentHash, number-1)
 	if parentHeader == nil {
@@ -469,25 +479,22 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 
 	author, err := istanbul.GetSignatureAddress(sigHash(parentHeader).Bytes(), istanbulExtra.Seal)
 	if err == nil {
-		log.Error("AccumulateRewards GetSignatureAddress", "err", err)
-		log.Trace("AccumulateRewards", "address", author)
-
 		log.Trace("AccumulateRewards", "miner address", author, "before val", state.GetBalance(author))
 		state.AddBalance(author, minerblockReward)
 		log.Trace("AccumulateRewards", "miner address", author, "after val", state.GetBalance(author))
 
-		proposalSeal := istanbulCore.PrepareCommittedSeal(parentHeader.Hash())
-		// 1. Get committed seals from current header
-		for _, seal := range istanbulExtra.CommittedSeal {
-			// 2. Get the original address by seal and parent block hash
-			addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
-			if err != nil {
-				log.Error("Not a valid address", "err", err)
-			}
-			log.Trace("Finalize", "Validator", addr, "Balance before", state.GetBalance(addr))
-			state.AddBalance(author, validatorblockReward)
-			log.Trace("Finalize", "Validator", addr, "Balance after", state.GetBalance(addr))
-		}
+		//proposalSeal := istanbulCore.PrepareCommittedSeal(parentHeader.Hash())
+		//// 1. Get committed seals from current header
+		//for _, seal := range istanbulExtra.CommittedSeal {
+		//	// 2. Get the original address by seal and parent block hash
+		//	addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
+		//	if err != nil {
+		//		log.Error("Not a valid address", "err", err)
+		//	}
+		//	log.Trace("Finalize", "Validator", addr, "Balance before", state.GetBalance(addr))
+		//	state.AddBalance(addr, validatorblockReward)
+		//	log.Trace("Finalize", "Validator", addr, "Balance after", state.GetBalance(addr))
+		//}
 	}
 	return state.GetBalance(author), nil
 }

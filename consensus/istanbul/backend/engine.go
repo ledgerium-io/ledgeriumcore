@@ -19,6 +19,7 @@ package backend
 import (
 	"bytes"
 	"errors"
+
 	//"github.com/ethereum/go-ethereum/params"
 
 	//	"github.com/ethereum/go-ethereum/params"
@@ -87,24 +88,23 @@ var (
 	errMismatchTxhashes = errors.New("mismatch transcations hashes")
 )
 var (
-
-	LedgeriumMinerBlockReward  *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block
+	LedgeriumMinerBlockReward *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block
 	//LedgeriumValidatorBlockReward *big.Int = big.NewInt(1e+18) // Block reward in wei for successfully mining a block upward from Byzantium
 
-	ledgeriumFirstTaperingBlockNumber * big.Int = big.NewInt(6307200)
-	LedgeriumFirstTaperMinerBlockReward  *big.Int = big.NewInt(2e+18) // Block reward in wei for successfully mining a block
+	ledgeriumFirstTaperingBlockNumber   *big.Int = big.NewInt(6307200)
+	LedgeriumFirstTaperMinerBlockReward *big.Int = big.NewInt(2e+18) // Block reward in wei for successfully mining a block
 	//LedgeriumFirstTaperValidatorBlockReward *big.Int = big.NewInt(67e+16)
 
-	ledgeriumSecondTaperingBlockNumber * big.Int = big.NewInt(12614400)
-	LedgeriumSecondTaperMinerBlockReward  *big.Int = big.NewInt(133e+16) // Block reward in wei for successfully mining a block
+	ledgeriumSecondTaperingBlockNumber   *big.Int = big.NewInt(12614400)
+	LedgeriumSecondTaperMinerBlockReward *big.Int = big.NewInt(133e+16) // Block reward in wei for successfully mining a block
 	//LedgeriumSecondTaperValidatorBlockReward *big.Int = big.NewInt(45e+16)
 
-	ledgeriumThirdTaperingBlockNumber * big.Int = big.NewInt(18921600)
-	LedgeriumThirdTaperMinerBlockReward  *big.Int = big.NewInt(88e+16) // Block reward in wei for successfully mining a block
+	ledgeriumThirdTaperingBlockNumber   *big.Int = big.NewInt(18921600)
+	LedgeriumThirdTaperMinerBlockReward *big.Int = big.NewInt(88e+16) // Block reward in wei for successfully mining a block
 	//LedgeriumThirdTaperValidatorBlockReward *big.Int = big.NewInt(30e+16)
 
-	ledgeriumFourthTaperingBlockNumber * big.Int = big.NewInt(25228800)
-	LedgeriumFourthTaperMinerBlockReward  *big.Int = big.NewInt(60e+16) // Block reward in wei for successfully mining a block
+	ledgeriumFourthTaperingBlockNumber   *big.Int = big.NewInt(25228800)
+	LedgeriumFourthTaperMinerBlockReward *big.Int = big.NewInt(60e+16) // Block reward in wei for successfully mining a block
 	//LedgeriumFourthTaperValidatorBlockReward *big.Int = big.NewInt(20e+16)
 
 	defaultDifficulty = big.NewInt(1)
@@ -415,7 +415,7 @@ func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 	log.Info("Entering Finalize", "sb.address", sb.address, "header.Number", header.Number)
 
 	//Accumulate any block and uncle rewards and commit the final state root
-	_, err :=  AccumulateRewards(chain, state, header, uncles)
+	_, err := AccumulateRewards(chain, state, header, uncles)
 	if err != nil {
 		log.Trace("Finalize", "AccumulateRewards err", err)
 		return nil, err
@@ -436,7 +436,7 @@ func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header *types.Header,
 	uncles []*types.Header) (*big.Int, error) {
 	// Select the correct block reward based on chain progression
-	var minerblockReward  * big.Int
+	var minerblockReward *big.Int
 	//var validatorblockReward * big.Int
 	if header.Number.Cmp(ledgeriumFourthTaperingBlockNumber) >= 1 {
 		log.Trace("AccumulateRewards block number is bigger than ledgeriumFourthTaperingBlockNumber")

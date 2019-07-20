@@ -24,6 +24,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -150,10 +151,12 @@ func (s EIP155Signer) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	log.Trace("SignatureValues before adjusting", "V", V)
 	if s.chainId.Sign() != 0 {
 		V = big.NewInt(int64(sig[64] + 35))
 		V.Add(V, s.chainIdMul)
 	}
+	log.Trace("SignatureValues after adjusting", "V", V, "sig[64]", int64(sig[64]))
 	return R, S, V, nil
 }
 
@@ -240,7 +243,9 @@ func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool, isPriv
 	} else {
 		offset = 27
 	}
+	log.Trace("Vb before value offset", "Vb", Vb)
 	V := byte(Vb.Uint64() - offset)
+	log.Trace("V before validating signature values", "V", V)
 	if !crypto.ValidateSignatureValues(V, R, S, homestead) {
 		return common.Address{}, ErrInvalidSig
 	}

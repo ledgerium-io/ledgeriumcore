@@ -465,24 +465,22 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 			}
 		}
 	}
-	//number := header.Number.Uint64()
-	//parentHeader := chain.GetHeader(header.ParentHash, number-1)
-	//if parentHeader == nil {
-	//	return nil, consensus.ErrUnknownAncestor
-	//}
+	number := header.Number.Uint64()
+	parentHeader := chain.GetHeader(header.ParentHash, number-1)
+	if parentHeader == nil {
+		return nil, consensus.ErrUnknownAncestor
+	}
 
-	//istanbulExtra, err := types.ExtractIstanbulExtra(parentHeader)
-	istanbulExtra, err := types.ExtractIstanbulExtra(header)
+	istanbulExtra, err := types.ExtractIstanbulExtra(parentHeader)
 	if err != nil {
 		log.Error("AccumulateRewards ExtractIstanbulExtra", "err", err)
 		return nil, err
 	}
 
-	//author, err := istanbul.GetSignatureAddress(sigHash(parentHeader).Bytes(), istanbulExtra.Seal)
-	author, err := istanbul.GetSignatureAddress(sigHash(header).Bytes(), istanbulExtra.Seal)
+	author, err := istanbul.GetSignatureAddress(sigHash(parentHeader).Bytes(), istanbulExtra.Seal)
 	if err == nil {
 		log.Trace("AccumulateRewards", "miner address", author, "before val", state.GetBalance(author))
-		//state.AddBalance(author, minerblockReward)
+		state.AddBalance(author, minerblockReward)
 		log.Trace("AccumulateRewards", "minerblockReward", minerblockReward)
 		log.Trace("AccumulateRewards", "miner address", author, "after val", state.GetBalance(author))
 

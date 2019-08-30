@@ -481,6 +481,7 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 	if err == nil {
 		log.Trace("AccumulateRewards", "miner address", author, "before val", state.GetBalance(author))
 		state.AddBalance(author, minerblockReward)
+		log.Trace("AccumulateRewards", "minerblockReward", minerblockReward)
 		log.Trace("AccumulateRewards", "miner address", author, "after val", state.GetBalance(author))
 
 		//proposalSeal := istanbulCore.PrepareCommittedSeal(parentHeader.Hash())

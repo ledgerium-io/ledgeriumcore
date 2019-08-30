@@ -52,11 +52,11 @@ func CheckValidatorSignature(valSet ValidatorSet, data []byte, sig []byte) (comm
 		log.Error("Failed to get signer address", "err", err)
 		return common.Address{}, err
 	}
-	log.Trace("CheckValidatorSignature", "signer", signer)
+	//log.Trace("CheckValidatorSignature", "signer", signer)
 
 	// 2. Check validator
 	if _, val := valSet.GetByAddress(signer); val != nil {
-		log.Trace("CheckValidatorSignature", "valSet.GetByAddress", val.Address())
+		//log.Trace("CheckValidatorSignature", "valSet.GetByAddress", val.Address())
 		return val.Address(), nil
 	}
 

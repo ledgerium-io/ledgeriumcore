@@ -77,11 +77,11 @@ var (
 	// making the transaction invalid, rather a DOS protection.
 	ErrOversizedData = errors.New("oversized data")
 
-	// ErrEtherValueUnsupported is returned if a transaction specifies an Xlg Value
+	// ErrXLGValueUnsupported is returned if a transaction specifies an Xlg Value
 	// for a private Quorum transaction.
-	ErrEtherValueUnsupported = errors.New("xlg value is not supported for private transactions")
-	
-	ErrInvalidGasPrice = errors.New("Gas price not 0")
+	ErrXLGValueUnsupported = errors.New("xlg value is not supported for private transactions")
+
+	ErrInvalidGasPrice = errors.New("Gas price is 0")
 )
 
 var (
@@ -559,6 +559,13 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
+	isQuorum := pool.chainconfig.IsQuorum
+
+	//Ledgerium Blockchain needs tx as not zero
+	if isQuorum && tx.GasPrice().Cmp(common.Big0) == 0 {
+		return ErrInvalidGasPrice
+	}
+
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
 	// UPDATED to 64KB to support the deployment of bigger contract due to the pressing need for sophisticated/complex contract in financial/capital markets - Nathan Aw
 	if tx.Size() > 64*1024 {
@@ -578,18 +585,23 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if err != nil {
 		return ErrInvalidSender
 	}
+
+	for addr := range pool.locals.accounts {
+		log.Trace("validateTx pool.locals.accounts", "addr", addr)
+	}
 	// Drop non-local transactions under our own minimal accepted gas price
 	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
 	if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
 		return ErrUnderpriced
 	}
+
 	// Ensure the transaction adheres to nonce ordering
 	if pool.currentState.GetNonce(from) > tx.Nonce() {
 		return ErrNonceTooLow
 	}
-	// Xlg value is not currently supported on private transactions
+	// Xlg value transfer is not currently supported on private transactions
 	if tx.IsPrivate() && (len(tx.Data()) == 0 || tx.Value().Sign() != 0) {
-		return ErrEtherValueUnsupported
+		return ErrXLGValueUnsupported
 	}
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
@@ -597,6 +609,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrInsufficientFunds
 	}
 	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
+	log.Trace("IntrinsicGas calculated", "pool.homestead", pool.homestead, "IntrinsicGas", intrGas)
 	if err != nil {
 		return err
 	}
@@ -726,7 +739,6 @@ func (pool *TxPool) journalTx(from common.Address, tx *types.Transaction) {
 		log.Warn("Failed to journal local transaction", "err", err)
 	}
 }
-
 
 // promoteTx adds a transaction to the pending (processable) list of transactions
 // and returns whether it was inserted or an older was better.
@@ -945,7 +957,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 			pool.all.Remove(hash)
 			pool.priced.Removed()
 		}
-		
+
 		// Drop all transactions that are too costly (low balance or out of gas)
 		drops, _ := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas)
 		for _, tx := range drops {
@@ -955,7 +967,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 			pool.priced.Removed()
 			queuedNofundsCounter.Inc(1)
 		}
-		
+
 		// Gather all executable transactions and promote them
 		for _, tx := range list.Ready(pool.pendingState.GetNonce(addr)) {
 			hash := tx.Hash()
@@ -1210,7 +1222,6 @@ func newTxLookup() *txLookup {
 		all: make(map[common.Hash]*types.Transaction),
 	}
 }
-
 
 // Range calls f on each key and value present in the map.
 func (t *txLookup) Range(f func(hash common.Hash, tx *types.Transaction) bool) {

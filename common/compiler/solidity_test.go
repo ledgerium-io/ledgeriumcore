@@ -23,7 +23,7 @@ import (
 
 const (
 	testSource = `
-	pragma solidity ^0.5.1;
+pragma solidity ^0.5.0;
 contract test {
    /// @notice Will multiply ` + "`a`" + ` by 7.
    function multiply(uint a) public returns(uint d) {

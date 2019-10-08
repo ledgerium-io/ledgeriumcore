@@ -48,11 +48,11 @@ func (api *API) GetWork() ([4]string, error) {
 		errc   = make(chan error, 1)
 	)
 
-	//select {
-	//case api.ethash.fetchWorkCh <- &sealWork{errc: errc, res: workCh}:
-	//case <-api.ethash.exitCh:
+	select {
+	case api.ethash.fetchWorkCh <- &sealWork{errc: errc, res: workCh}:
+	case <-api.ethash.exitCh:
 		return [4]string{}, errEthashStopped
-	//}
+	}
 
 	select {
 	case work := <-workCh:
@@ -72,16 +72,16 @@ func (api *API) SubmitWork(nonce types.BlockNonce, hash, digest common.Hash) boo
 
 	var errc = make(chan error, 1)
 
-	//select {
-	//case api.ethash.submitWorkCh <- &mineResult{
-	//	nonce:     nonce,
-	//	mixDigest: digest,
-	//	hash:      hash,
-	//	errc:      errc,
-	//}:
-	//case <-api.ethash.exitCh:
-	//	return false
-	//}
+	select {
+	case api.ethash.submitWorkCh <- &mineResult{
+		nonce:     nonce,
+		mixDigest: digest,
+		hash:      hash,
+		errc:      errc,
+	}:
+	case <-api.ethash.exitCh:
+		return false
+	}
 
 	err := <-errc
 	return err == nil
@@ -100,11 +100,11 @@ func (api *API) SubmitHashRate(rate hexutil.Uint64, id common.Hash) bool {
 
 	var done = make(chan struct{}, 1)
 
-	//select {
-	//case api.ethash.submitRateCh <- &hashrate{done: done, rate: uint64(rate), id: id}:
-	//case <-api.ethash.exitCh:
-	//	return false
-	//}
+	select {
+	case api.ethash.submitRateCh <- &hashrate{done: done, rate: uint64(rate), id: id}:
+	case <-api.ethash.exitCh:
+		return false
+	}
 
 	// Block until hash rate submitted successfully.
 	<-done

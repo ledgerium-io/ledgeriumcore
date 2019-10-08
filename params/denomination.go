@@ -19,7 +19,7 @@ package params
 // These are the multipliers for xlg denominations.
 // Example: To get the wei value of an amount in 'douglas', use
 //
-//    new(big.Int).Mul(value, big.NewInt(params.Douglas))
+//    new(big.Int).Mul(value, big.NewInt(params.GWei))
 //
 const (
 	Wei      = 1

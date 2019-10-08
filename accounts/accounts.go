@@ -106,12 +106,12 @@ type Wallet interface {
 	// or optionally with the aid of any location metadata from the embedded URL field.
 	//
 	// If the wallet requires additional authentication to sign the request (e.g.
-	// a password to decrypt the account, or a PIN code o verify the transaction),
+	// a password to decrypt the account, or a PIN code to verify the transaction),
 	// an AuthNeededError instance will be returned, containing infos for the user
 	// about which fields or actions are needed. The user may retry by providing
 	// the needed details via SignTxWithPassphrase, or by other means (e.g. unlock
 	// the account in a keystore).
-	SignTx(account Account, tx *types.Transaction, chainID *big.Int, isQuorum bool) (*types.Transaction, error)
+	SignTx(account Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error)
 
 	// SignHashWithPassphrase requests the wallet to sign the given hash with the
 	// given passphrase as extra authentication information.

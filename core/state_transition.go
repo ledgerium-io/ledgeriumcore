@@ -192,8 +192,14 @@ func (st *StateTransition) preCheck() error {
 }
 
 // TransitionDb will transition the state by applying the current message and
-// returning the result including the used gas. It returns an error if it
-// failed. An error indicates a consensus issue.
+// returning the result including the used gas. It returns an error if failed.
+// An error indicates a consensus issue.
+//
+// Quorum:
+// 1. Intrinsic gas is calculated based on the encrypted payload hash
+//    and NOT the actual private payload
+// 2. For private transactions, we only deduct intrinsic gas from the gas pool
+//    regardless the current node is party to the transaction or not
 func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bool, err error) {
 	if err = st.preCheck(); err != nil {
 		return
@@ -262,6 +268,8 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		}
 		//if input is empty for the smart contract call, return
 		if len(data) == 0 && isPrivate {
+			st.refundGas()
+			st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
 			return nil, 0, false, nil
 		}
 
@@ -299,7 +307,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 func (st *StateTransition) refundGas() {
 	// Apply refund counter, capped to half of the used gas.
 	refund := st.gasUsed() / 2
-	log.Trace("refundGas", "refund", refund, "st.gasUsed()", refund * 2, "st.state.GetRefund", st.state.GetRefund())
+	log.Trace("refundGas", "refund", refund, "st.gasUsed()", refund*2, "st.state.GetRefund", st.state.GetRefund())
 	if refund > st.state.GetRefund() {
 		refund = st.state.GetRefund()
 	}

@@ -25,7 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/discover"
+	"github.com/ethereum/go-ethereum/p2p/enode"
 )
 
 const (
@@ -64,7 +64,7 @@ func (pm *ProtocolManager) syncTransactions(p *peer) {
 // the transactions in small packs to one peer at a time.
 func (pm *ProtocolManager) txsyncLoop() {
 	var (
-		pending = make(map[discover.NodeID]*txsync)
+		pending = make(map[enode.ID]*txsync)
 		sending = false               // whether a send is active
 		pack    = new(txsync)         // the pack that is being sent
 		done    = make(chan error, 1) // result of the send
@@ -207,16 +207,6 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 	if atomic.LoadUint32(&pm.fastSync) == 1 {
 		log.Info("Fast sync complete, auto disabling")
 		atomic.StoreUint32(&pm.fastSync, 0)
-	}
-	atomic.StoreUint32(&pm.acceptTxs, 1) // Mark initial sync done
-	if head := pm.blockchain.CurrentBlock(); head.NumberU64() > 0 {
-		// We've completed a sync cycle, notify all peers of new state. This path is
-		// essential in star-topology networks where a gateway node needs to notify
-		// all its out-of-date peers of the availability of a new block. This failure
-		// scenario will most often crop up in private and hackathon networks with
-		// degenerate connectivity, but it should be healthy for the mainnet too to
-		// more reliably update peers or the local TD state.
-		go pm.BroadcastBlock(head, false)
 	}
 	atomic.StoreUint32(&pm.acceptTxs, 1) // Mark initial sync done
 	if head := pm.blockchain.CurrentBlock(); head.NumberU64() > 0 {

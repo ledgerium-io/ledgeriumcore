@@ -480,7 +480,7 @@ func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header
 	author, err := istanbul.GetSignatureAddress(sigHash(parentHeader).Bytes(), istanbulExtra.Seal)
 	if err == nil {
 		log.Trace("AccumulateRewards", "miner address", author, "before val", state.GetBalance(author))
-		state.AddBalance(author, minerblockReward)
+		//state.AddBalance(author, minerblockReward)
 		log.Trace("AccumulateRewards", "minerblockReward", minerblockReward)
 		log.Trace("AccumulateRewards", "miner address", author, "after val", state.GetBalance(author))
 
@@ -726,7 +726,6 @@ func sigHash(header *types.Header) (hash common.Hash) {
 	hasher.Sum(hash[:0])
 	return hash
 }
-
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (sb *backend) SealHash(header *types.Header) common.Hash {

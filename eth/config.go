@@ -51,9 +51,9 @@ var DefaultConfig = Config{
 	TrieTimeout:   60 * time.Minute,
 	MinerGasFloor: params.MinGasLimit,
 	MinerGasCeil:  params.GenesisGasLimit,
-	MinerGasPrice: big.NewInt(params.GWei),
+	MinerGasPrice: big.NewInt(params.GWei), //gasPrice = 1000000000 for Ledgerium
 	MinerRecommit: 3 * time.Second,
-	GasPrice:      big.NewInt(1 * params.Shannon), //gasPrice = 1000000000 for Ledgerium
+	//GasPrice:      big.NewInt(1 * params.Shannon), //gasPrice = 1000000000 for Ledgerium
 
 	TxPool: core.DefaultTxPoolConfig,
 	GPO: gasprice.Config{

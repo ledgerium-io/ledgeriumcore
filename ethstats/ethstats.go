@@ -22,8 +22,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"net"
+	"net/http"
+	"os"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -350,16 +353,17 @@ func (s *Service) readLoop(conn *websocket.Conn) {
 // nodeInfo is the collection of metainformation about a node that is displayed
 // on the monitoring page.
 type nodeInfo struct {
-	Name     string `json:"name"`
-	Node     string `json:"node"`
-	Port     int    `json:"port"`
-	Network  string `json:"net"`
-	Protocol string `json:"protocol"`
-	API      string `json:"api"`
-	Os       string `json:"os"`
-	OsVer    string `json:"os_v"`
-	Client   string `json:"client"`
-	History  bool   `json:"canUpdateHistory"`
+	Name     	string `json:"name"`
+	Node     	string `json:"node"`
+	IPAddress   string `json:"ipaddress"`
+	Port     	int    `json:"port"`
+	Network  	string `json:"net"`
+	Protocol 	string `json:"protocol"`
+	API      	string `json:"api"`
+	Os       	string `json:"os"`
+	OsVer    	string `json:"os_v"`
+	Client   	string `json:"client"`
+	History  	bool   `json:"canUpdateHistory"`
 }
 
 // authMsg is the authentication infos needed to login to a monitoring server.
@@ -384,11 +388,25 @@ func (s *Service) login(conn *websocket.Conn) error {
 		network = fmt.Sprintf("%d", infos.Protocols["les"].(*les.NodeInfo).Network)
 		protocol = fmt.Sprintf("les/%d", les.ClientProtocolVersions[0])
 	}
+
+	resp, err := http.Get("https://api.ipify.org")
+	if err != nil {
+		os.Stderr.WriteString(err.Error())
+		os.Stderr.WriteString("\n")
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	var respbody []byte
+	respbody, err = ioutil.ReadAll(resp.Body)
+	//fmt.Println()
+	log.Trace("Sending node info to ethstats", "IP", string(respbody))
 	auth := &authMsg{
 		ID: s.node,
 		Info: nodeInfo{
 			Name:     s.node,
 			Node:     infos.Name,
+			IPAddress : string(respbody),
 			Port:     infos.Ports.Listener,
 			Network:  network,
 			Protocol: protocol,

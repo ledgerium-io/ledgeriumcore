@@ -71,7 +71,7 @@ func (ist *IstanbulExtra) DecodeRLP(s *rlp.Stream) error {
 // error if the length of the given extra-data is less than 32 bytes or the extra-data can not
 // be decoded.
 func ExtractIstanbulExtra(h *Header) (*IstanbulExtra, error) {
-	log.Trace("ExtractIstanbulExtra", "header.Extra", common.Bytes2Hex(h.Extra))
+	//log.Trace("ExtractIstanbulExtra", "header.Extra", common.Bytes2Hex(h.Extra))
 	if len(h.Extra) < IstanbulExtraVanity {
 		return nil, ErrInvalidIstanbulHeaderExtra
 	}
@@ -79,7 +79,7 @@ func ExtractIstanbulExtra(h *Header) (*IstanbulExtra, error) {
 	var istanbulExtra *IstanbulExtra
 	err := rlp.DecodeBytes(h.Extra[IstanbulExtraVanity:], &istanbulExtra)
 	if err != nil {
-		log.Trace("ExtractIstanbulExtra", "err != nil")
+		log.Trace("ExtractIstanbulExtra", "err != nil", err)
 		return nil, err
 	}
 	return istanbulExtra, nil

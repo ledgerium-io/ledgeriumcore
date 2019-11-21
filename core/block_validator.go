@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // BlockValidator is responsible for validating block headers, uncles and
@@ -81,6 +82,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // For quorum it also verifies if the canonical hash in the blocks state points to a valid parent hash.
 func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas uint64) error {
 	header := block.Header()
+	log.Info("ValidateState", "header.Root",header.Root, "header.Number", header.Number)
 	if block.GasUsed() != usedGas {
 		return fmt.Errorf("invalid gas used (remote: %d local: %d)", block.GasUsed(), usedGas)
 	}

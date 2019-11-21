@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning
@@ -87,6 +88,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb, privateState *stat
 			allLogs = append(allLogs, privateReceipt.Logs...)
 		}
 	}
+	log.Info("Process right before the Finalise call")
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
 	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), block.Uncles(), receipts)
 

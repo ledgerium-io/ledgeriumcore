@@ -1201,7 +1201,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		// alias state.New because we introduce a variable named state on the next line
 		stateNew := state.New
-
 		state, err := state.New(parent.Root(), bc.stateCache)
 		if err != nil {
 			return i, events, coalescedLogs, err

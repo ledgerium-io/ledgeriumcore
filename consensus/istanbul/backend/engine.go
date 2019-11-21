@@ -18,9 +18,11 @@ package backend
 
 import (
 	"bytes"
-	//"encoding/binary"
 	"errors"
-	"github.com/ethereum/go-ethereum/params"
+
+	//"github.com/ethereum/go-ethereum/params"
+
+	//	"github.com/ethereum/go-ethereum/params"
 	"math/big"
 	"math/rand"
 	"time"
@@ -86,8 +88,24 @@ var (
 	errMismatchTxhashes = errors.New("mismatch transcations hashes")
 )
 var (
-	FrontierBlockReward  *big.Int = big.NewInt(5e+18) // Block reward in wei for successfully mining a block
-	ByzantiumBlockReward *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block upward from Byzantium
+	LedgeriumMinerBlockReward *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block
+	//LedgeriumValidatorBlockReward *big.Int = big.NewInt(1e+18) // Block reward in wei for successfully mining a block upward from Byzantium
+
+	ledgeriumFirstTaperingBlockNumber   *big.Int = big.NewInt(6307200)
+	LedgeriumFirstTaperMinerBlockReward *big.Int = big.NewInt(2e+18) // Block reward in wei for successfully mining a block
+	//LedgeriumFirstTaperValidatorBlockReward *big.Int = big.NewInt(67e+16)
+
+	ledgeriumSecondTaperingBlockNumber   *big.Int = big.NewInt(12614400)
+	LedgeriumSecondTaperMinerBlockReward *big.Int = big.NewInt(133e+16) // Block reward in wei for successfully mining a block
+	//LedgeriumSecondTaperValidatorBlockReward *big.Int = big.NewInt(45e+16)
+
+	ledgeriumThirdTaperingBlockNumber   *big.Int = big.NewInt(18921600)
+	LedgeriumThirdTaperMinerBlockReward *big.Int = big.NewInt(88e+16) // Block reward in wei for successfully mining a block
+	//LedgeriumThirdTaperValidatorBlockReward *big.Int = big.NewInt(30e+16)
+
+	ledgeriumFourthTaperingBlockNumber   *big.Int = big.NewInt(25228800)
+	LedgeriumFourthTaperMinerBlockReward *big.Int = big.NewInt(60e+16) // Block reward in wei for successfully mining a block
+	//LedgeriumFourthTaperValidatorBlockReward *big.Int = big.NewInt(20e+16)
 
 	defaultDifficulty = big.NewInt(1)
 	nilUncleHash      = types.CalcUncleHash(nil) // Always Keccak256(RLP([])) as uncles are meaningless outside of PoW.
@@ -387,41 +405,6 @@ var (
 	big32 = big.NewInt(32)
 )
 
-// accumulateRewards credits the coinbase of the given block with the mining
-// reward. The total reward consists of the static block reward and rewards for
-// included uncles. The coinbase of each uncle block is also rewarded.
-func (sb *backend) accumulateRewards(config *params.ChainConfig, state *state.StateDB, header *types.Header,
-	uncles []*types.Header) (*big.Int, error) {
-	// Select the correct block reward based on chain progression
-	blockReward := FrontierBlockReward
-	if config.IsByzantium(header.Number) {
-		blockReward = ByzantiumBlockReward
-	}
-	//Accumulate the rewards for the miner and any included uncles
-	reward := new(big.Int).Set(blockReward)
-	log.Trace("accumulateRewards", "reward1", reward)
-	r := new(big.Int)
-	for _, uncle := range uncles {
-		r.Add(uncle.Number, big8)
-		r.Sub(r, header.Number)
-		r.Mul(r, blockReward)
-		r.Div(r, big8)
-		state.AddBalance(uncle.Coinbase, r)
-
-		r.Div(blockReward, big32)
-		reward.Add(reward, r)
-	}
-	log.Trace("accumulateRewards", "reward2", reward)
-
-	val := state.GetBalance(sb.address)
-	log.Trace("accumulateRewards", "address", sb.address, "val", val)
-	state.AddBalance(sb.address, reward)
-	val1 := state.GetBalance(sb.address)
-	log.Trace("accumulateRewards", "address", sb.address, "val", val1)
-
-	return val1, nil
-}
-
 // Finalize runs any post-transaction state modifications (e.g. block rewards)
 // and assembles the final block.
 //
@@ -429,48 +412,92 @@ func (sb *backend) accumulateRewards(config *params.ChainConfig, state *state.St
 // consensus rules that happen at finalization (e.g. block rewards).
 func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
 	uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
-	log.Trace("Finalize", "sb.address", sb.address)
+	log.Info("Entering Finalize", "sb.address", sb.address, "header.Number", header.Number)
 
-	// Accumulate any block and uncle rewards and commit the final state root
-	//val1, err :=  accumulateRewards(chain.Config(), state, header, uncles)
+	//Accumulate any block and uncle rewards and commit the final state root
+	_, err := AccumulateRewards(chain, state, header, uncles)
+	if err != nil {
+		log.Trace("Finalize", "AccumulateRewards err", err)
+		return nil, err
+	}
 
-	blockReward := FrontierBlockReward
-	log.Trace("Finalize", "blockReward", blockReward)
-
-	reward := new(big.Int).Set(blockReward)
-	log.Trace("Finalize", "reward1", reward)
-	////if sb.config.IsByzantium(header.Number) {
-	////	blockReward = ByzantiumBlockReward
-	////}
-	////Accumulate the rewards for the miner and any included uncles
-	//reward := new(big.Int).Set(blockReward)
-	//log.Trace("Finalize", "reward1", reward)
-	//r := new(big.Int)
-	//for _, uncle := range uncles {
-	//	r.Add(uncle.Number, big8)
-	//	r.Sub(r, header.Number)
-	//	r.Mul(r, blockReward)
-	//	r.Div(r, big8)
-	//	state.AddBalance(uncle.Coinbase, r)
-	//
-	//	r.Div(blockReward, big32)
-	//	reward.Add(reward, r)
-	//}
-	//log.Trace("Finalize", "reward2", reward)
-	//
-	//val := state.GetBalance(sb.address)
-	//log.Trace("Finalize", "address", sb.address, "val", val)
-	//state.AddBalance(sb.address, reward)
-	//val1 := state.GetBalance(sb.address)
-	//log.Trace("Finalize", "address", sb.address, "val", val1)
-
-	//////////////////////////////////////////////
 	// No block rewards in Istanbul, so the state remains as is and uncles are dropped
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.UncleHash = nilUncleHash
 
+	log.Info("Exiting Finalize", "header.Root", header.Root)
 	// Assemble and return the final block for sealing
 	return types.NewBlock(header, txs, nil, receipts), nil
+}
+
+// accumulateRewards credits the coinbase of the given block with the mining
+// reward. The total reward consists of the static block reward and rewards for
+// included uncles. The coinbase of each uncle block is also rewarded.
+func AccumulateRewards(chain consensus.ChainReader, state *state.StateDB, header *types.Header,
+	uncles []*types.Header) (*big.Int, error) {
+	// Select the correct block reward based on chain progression
+	var minerblockReward *big.Int
+	//var validatorblockReward * big.Int
+	if header.Number.Cmp(ledgeriumFourthTaperingBlockNumber) >= 1 {
+		log.Trace("AccumulateRewards block number is bigger than ledgeriumFourthTaperingBlockNumber")
+		minerblockReward = LedgeriumFourthTaperMinerBlockReward
+		//validatorblockReward = LedgeriumFourthTaperValidatorBlockReward
+	} else {
+		if header.Number.Cmp(ledgeriumThirdTaperingBlockNumber) >= 1 {
+			log.Trace("AccumulateRewards block number is bigger than ledgeriumThirdTaperingBlockNumber")
+			minerblockReward = LedgeriumThirdTaperMinerBlockReward
+			//validatorblockReward = LedgeriumThirdTaperValidatorBlockReward
+		} else {
+			if header.Number.Cmp(ledgeriumSecondTaperingBlockNumber) >= 1 {
+				log.Trace("AccumulateRewards block number is bigger than ledgeriumSecondTaperingBlockNumber")
+				minerblockReward = LedgeriumSecondTaperMinerBlockReward
+				//validatorblockReward = LedgeriumSecondTaperValidatorBlockReward
+			} else {
+				if header.Number.Cmp(ledgeriumFirstTaperingBlockNumber) >= 1 {
+					log.Trace("AccumulateRewards block number is bigger than ledgeriumFirstTaperingBlockNumber")
+					minerblockReward = LedgeriumFirstTaperMinerBlockReward
+					//validatorblockReward = LedgeriumFirstTaperValidatorBlockReward
+				} else {
+					log.Trace("AccumulateRewards block number is smaller than ledgeriumMainNetBlockNumber")
+					minerblockReward = LedgeriumMinerBlockReward
+					//validatorblockReward = LedgeriumValidatorBlockReward
+				}
+			}
+		}
+	}
+	number := header.Number.Uint64()
+	parentHeader := chain.GetHeader(header.ParentHash, number-1)
+	if parentHeader == nil {
+		return nil, consensus.ErrUnknownAncestor
+	}
+
+	istanbulExtra, err := types.ExtractIstanbulExtra(parentHeader)
+	if err != nil {
+		log.Error("AccumulateRewards ExtractIstanbulExtra", "err", err)
+		return nil, err
+	}
+
+	author, err := istanbul.GetSignatureAddress(sigHash(parentHeader).Bytes(), istanbulExtra.Seal)
+	if err == nil {
+		log.Trace("AccumulateRewards", "miner address", author, "before val", state.GetBalance(author))
+		state.AddBalance(author, minerblockReward)
+		log.Trace("AccumulateRewards", "minerblockReward", minerblockReward)
+		log.Trace("AccumulateRewards", "miner address", author, "after val", state.GetBalance(author))
+
+		//proposalSeal := istanbulCore.PrepareCommittedSeal(parentHeader.Hash())
+		//// 1. Get committed seals from current header
+		//for _, seal := range istanbulExtra.CommittedSeal {
+		//	// 2. Get the original address by seal and parent block hash
+		//	addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
+		//	if err != nil {
+		//		log.Error("Not a valid address", "err", err)
+		//	}
+		//	log.Trace("Finalize", "Validator", addr, "Balance before", state.GetBalance(addr))
+		//	state.AddBalance(addr, validatorblockReward)
+		//	log.Trace("Finalize", "Validator", addr, "Balance after", state.GetBalance(addr))
+		//}
+	}
+	return state.GetBalance(author), nil
 }
 
 // Seal generates a new block for the given input block with the local miner's
@@ -543,7 +570,7 @@ func (sb *backend) updateBlock(parent *types.Header, block *types.Block) (*types
 	if err != nil {
 		return nil, err
 	}
-	//log.Trace("updateBlock", "seal", common.Bytes2Hex(seal))
+
 	err = writeSeal(header, seal)
 	if err != nil {
 		return nil, err

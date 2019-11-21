@@ -22,10 +22,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto/sha3"
+	"github.com/ethereum/go-ethereum/rlp"
 	"sync"
 	"time"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -33,6 +35,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/consensus/istanbul"
 )
 
 // Type determines the kind of filter and is used to put the filter in to
@@ -358,7 +361,15 @@ func (es *EventSystem) broadcast(filters filterIndex, ev interface{}) {
 		}
 	case core.ChainEvent:
 		for _, f := range filters[BlocksSubscription] {
-			f.headers <- e.Block.Header()
+			header := e.Block.Header()
+			istanbulExtra, err := types.ExtractIstanbulExtra(header)
+			if err == nil {
+				log.Trace("ChainEvent", "New Head event", header.Number)
+				author, _ := istanbul.GetSignatureAddress(sigHash(header).Bytes(), istanbulExtra.Seal)
+				header.Coinbase = author
+				log.Trace("ChainEvent", "miner", header.Coinbase)
+			}
+			f.headers <- header
 		}
 		if es.lightMode && len(filters[LogsSubscription]) > 0 {
 			es.lightFilterNewHead(e.Block.Header(), func(header *types.Header, remove bool) {
@@ -370,6 +381,15 @@ func (es *EventSystem) broadcast(filters filterIndex, ev interface{}) {
 			})
 		}
 	}
+}
+
+func sigHash(header *types.Header) (hash common.Hash) {
+	hasher := sha3.NewKeccak256()
+
+	// Clean seal is required for calculating proposer seal.
+	rlp.Encode(hasher, types.IstanbulFilteredHeader(header, false))
+	hasher.Sum(hash[:0])
+	return hash
 }
 
 func (es *EventSystem) lightFilterNewHead(newHeader *types.Header, callBack func(*types.Header, bool)) {

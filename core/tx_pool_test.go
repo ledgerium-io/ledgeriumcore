@@ -291,8 +291,8 @@ func TestInvalidTransactions(t *testing.T) {
 	from, _ = deriveSender(tx3)
 	pool.currentState.AddBalance(from, balance)
 	tx3.SetPrivate()
-	if err := pool.AddRemote(tx3); err != ErrEtherValueUnsupported {
-		t.Error("expected", ErrEtherValueUnsupported, "; got", err)
+	if err := pool.AddRemote(tx3); err != ErrXLGValueUnsupported {
+		t.Error("expected", ErrXLGValueUnsupported, "; got", err)
 	}
 }
 

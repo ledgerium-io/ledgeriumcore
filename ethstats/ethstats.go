@@ -22,8 +22,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"net"
+	"net/http"
+	"os"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -350,16 +353,17 @@ func (s *Service) readLoop(conn *websocket.Conn) {
 // nodeInfo is the collection of metainformation about a node that is displayed
 // on the monitoring page.
 type nodeInfo struct {
-	Name     string `json:"name"`
-	Node     string `json:"node"`
-	Port     int    `json:"port"`
-	Network  string `json:"net"`
-	Protocol string `json:"protocol"`
-	API      string `json:"api"`
-	Os       string `json:"os"`
-	OsVer    string `json:"os_v"`
-	Client   string `json:"client"`
-	History  bool   `json:"canUpdateHistory"`
+	Name     	string `json:"name"`
+	Node     	string `json:"node"`
+	IPAddress   string `json:"ipaddress"`
+	Port     	int    `json:"port"`
+	Network  	string `json:"net"`
+	Protocol 	string `json:"protocol"`
+	API      	string `json:"api"`
+	Os       	string `json:"os"`
+	OsVer    	string `json:"os_v"`
+	Client   	string `json:"client"`
+	History  	bool   `json:"canUpdateHistory"`
 }
 
 // authMsg is the authentication infos needed to login to a monitoring server.
@@ -384,11 +388,25 @@ func (s *Service) login(conn *websocket.Conn) error {
 		network = fmt.Sprintf("%d", infos.Protocols["les"].(*les.NodeInfo).Network)
 		protocol = fmt.Sprintf("les/%d", les.ClientProtocolVersions[0])
 	}
+
+	resp, err := http.Get("https://api.ipify.org")
+	if err != nil {
+		os.Stderr.WriteString(err.Error())
+		os.Stderr.WriteString("\n")
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	var respbody []byte
+	respbody, err = ioutil.ReadAll(resp.Body)
+	//fmt.Println()
+	log.Trace("Sending node info to ethstats", "IP", string(respbody))
 	auth := &authMsg{
 		ID: s.node,
 		Info: nodeInfo{
 			Name:     s.node,
 			Node:     infos.Name,
+			IPAddress : string(respbody),
 			Port:     infos.Ports.Listener,
 			Network:  network,
 			Protocol: protocol,
@@ -560,24 +578,25 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 	author, _ := s.engine.Author(header)
 
 	extra, err := types.ExtractIstanbulExtra(header)
-	if err != nil {
-		log.Error("AssembleBlockStats", "ExtractIstanbulExtra returns error", err)
-	}
-	// The length of Committed seals should be larger than 0
-	if len(extra.CommittedSeal) == 0 {
-		log.Error("AssembleBlockStats", "length of CommittedSeal is zero")
-	}
-
-	proposalSeal := istanbulCore.PrepareCommittedSeal(header.Hash())
-	// 1. Get committed seals from current header
-	for _, seal := range extra.CommittedSeal {
-		// 2. Get the original address by seal and parent block hash
-		addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
-		if err != nil {
-			log.Error("Not a valid address", "err", err)
-			//return err
+	if err == nil {
+		// The length of Committed seal should be more than 0
+		if len(extra.CommittedSeal) == 0 {
+			log.Trace("AssembleBlockStats : length of CommittedSeal is zero")
 		}
-		validators = append(validators, addr)
+
+		proposalSeal := istanbulCore.PrepareCommittedSeal(header.Hash())
+		// 1. Get committed seals from current header
+		for _, seal := range extra.CommittedSeal {
+			// 2. Get the original address by seal and parent block hash
+			addr, err := istanbul.GetSignatureAddress(proposalSeal, seal)
+			if err != nil {
+				log.Trace("Not a valid address", "err", err)
+				//return err
+			}
+			validators = append(validators, addr)
+		}
+	} else {
+		log.Trace("AssembleBlockStats", "ExtractIstanbulExtra returns error", err)
 	}
 
 	return &blockStats{
@@ -594,7 +613,7 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		TxHash:     header.TxHash,
 		Root:       header.Root,
 		Uncles:     uncles,
-		Validators:  validators,
+		Validators: validators,
 	}
 }
 
